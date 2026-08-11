@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct QuickSourceLookApp: App {
+struct LightQuickLookApp: App {
     var body: some Scene {
         WindowGroup { ContentView() }
             .windowResizability(.contentSize)

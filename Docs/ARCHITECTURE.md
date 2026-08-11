@@ -1,10 +1,10 @@
 # Architecture
 
-QuickSourceLook consists of three production targets:
+LightQuickLook consists of three production targets:
 
-1. `QuickSourceLook`, a tiny SwiftUI host that explains extension activation and declares narrow imported UTIs.
-2. `QuickSourcePreview`, a view-based Quick Look Preview Extension implementing `QLPreviewingController`.
-3. `QuickSourceCore`, a statically linked pure-Foundation library containing decoding, language detection, chunking, and lexical highlighting.
+1. `LightQuickLook`, a tiny SwiftUI host that explains extension activation, imports the established Markdown UTI, and exports narrow application-owned PowerShell/HCL UTIs.
+2. `LightQuickLookPreview`, a view-based Quick Look Preview Extension implementing `QLPreviewingController`.
+3. `LightQuickLookCore`, a statically linked pure-Foundation library containing decoding, language detection, chunking, and lexical highlighting.
 
 The extension UI is native AppKit: `NSScrollView` contains a non-editable, selectable, no-wrap `NSTextView`. No HTML, WebKit, temporary rendered files, or subprocesses are involved.
 

@@ -1,4 +1,4 @@
-# QuickSourceLook implementation plan
+# LightQuickLook implementation plan
 
 - [x] Milestone 0 — inspect environment, research UTIs, document registration design
 - [x] Milestone 1 — host/extension skeleton implemented, built, registered, and invoked through Quick Look

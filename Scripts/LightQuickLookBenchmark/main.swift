@@ -1,6 +1,6 @@
 import Foundation
 import AppKit
-import QuickSourceCore
+import LightQuickLookCore
 
 func elapsedMilliseconds(_ operation: () throws -> Void) rethrows -> Double {
     let start = ContinuousClock.now

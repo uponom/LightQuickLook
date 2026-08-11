@@ -1,5 +1,5 @@
 import AppKit
-import QuickSourceCore
+import LightQuickLookCore
 
 @MainActor
 final class CodePreviewView: NSView {

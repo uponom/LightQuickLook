@@ -64,7 +64,7 @@ This is broader than Bash. Empirical checks show these types also conform to `pu
 - `.php` → `public.php-script`;
 - `.zsh` → `public.zsh-script`.
 
-Consequently QuickSourceLook may be offered as a handler for those scripts. The extension does not claim their syntax: extension-first language detection falls back to safe plain monospaced text. This compromise must be rechecked after installation because Quick Look handler precedence can also depend on other installed applications.
+Consequently LightQuickLook may be offered as a handler for those scripts. The extension does not claim their syntax: extension-first language detection falls back to safe plain monospaced text. This compromise must be rechecked after installation because Quick Look handler precedence can also depend on other installed applications.
 
 ## Post-build verification
 

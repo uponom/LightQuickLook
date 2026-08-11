@@ -9,7 +9,7 @@
 - SDK: macOS 26.5
 - build: SwiftPM Release (`-O`)
 - input: synthetic JSON containing ASCII, Cyrillic, umlauts, and emoji
-- command: `swift run -c release QuickSourceBenchmark`
+- command: `swift run -c release LightQuickLookBenchmark`
 
 These are lexer/attributed-string measurements, not complete Finder Space-bar latency. Real Quick Look YAML and JSON previews were also opened successfully from the final Release bundle.
 

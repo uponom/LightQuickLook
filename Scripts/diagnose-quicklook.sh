@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
-  print -u2 "usage: $0 /path/to/QuickSourceLook.app"
+  print -u2 "usage: $0 /path/to/LightQuickLook.app"
   exit 64
 fi
 
@@ -13,7 +13,7 @@ if [[ ! -d "$app_path" ]]; then
 fi
 
 print "Extension registrations:"
-pluginkit -mAvvv -p com.apple.quicklook.preview | grep -A4 -B2 'QuickSourcePreview' || true
+pluginkit -mAvvv -p com.apple.quicklook.preview | grep -A4 -B2 'LightQuickLookPreview' || true
 
 print "Sample UTIs:"
 for file_path in "${0:A:h:h}"/Samples/*; do

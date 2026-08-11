@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import QuickSourceCore
+@testable import LightQuickLookCore
 
 final class LanguageAndDecoderTests: XCTestCase {
     func testLanguageDetectionUsesExtensionsBeforeGuessing() {

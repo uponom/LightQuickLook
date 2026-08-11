@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "QuickSourceLook",
+    name: "LightQuickLook",
     platforms: [.macOS(.v15)],
-    products: [.library(name: "QuickSourceCore", targets: ["QuickSourceCore"])],
+    products: [.library(name: "LightQuickLookCore", targets: ["LightQuickLookCore"])],
     targets: [
-        .target(name: "QuickSourceCore", path: "QuickSourceCore"),
-        .executableTarget(name: "QuickSourceSelfTest", dependencies: ["QuickSourceCore"], path: "Scripts/QuickSourceSelfTest"),
-        .executableTarget(name: "QuickSourceBenchmark", dependencies: ["QuickSourceCore"], path: "Scripts/QuickSourceBenchmark"),
-        .testTarget(name: "QuickSourceCoreTests", dependencies: ["QuickSourceCore"], path: "QuickSourceTests")
+        .target(name: "LightQuickLookCore", path: "LightQuickLookCore"),
+        .executableTarget(name: "LightQuickLookSelfTest", dependencies: ["LightQuickLookCore"], path: "Scripts/LightQuickLookSelfTest"),
+        .executableTarget(name: "LightQuickLookBenchmark", dependencies: ["LightQuickLookCore"], path: "Scripts/LightQuickLookBenchmark"),
+        .testTarget(name: "LightQuickLookCoreTests", dependencies: ["LightQuickLookCore"], path: "LightQuickLookTests")
     ]
 )

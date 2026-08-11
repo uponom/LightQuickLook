@@ -1,1 +1,1 @@
-name = "QuickSourceLook"
+name = "LightQuickLook"

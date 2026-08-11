@@ -1,1 +1,1 @@
-# QuickSourceLook sample
+# LightQuickLook sample

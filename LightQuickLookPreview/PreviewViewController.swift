@@ -1,6 +1,6 @@
 import AppKit
 import QuickLookUI
-import QuickSourceCore
+import LightQuickLookCore
 
 @MainActor
 @objc(PreviewViewController)

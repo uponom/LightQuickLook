@@ -1,6 +1,6 @@
 # Security and privacy
 
-QuickSourceLook treats every previewed file as untrusted bytes.
+LightQuickLook treats every previewed file as untrusted bytes.
 
 ## Data flow
 
@@ -37,9 +37,9 @@ After a full Xcode Release build:
 ```sh
 codesign -d --entitlements :- <app>
 codesign -dv --verbose=4 <app>
-otool -L <app>/Contents/MacOS/QuickSourceLook
-otool -L <app>/Contents/PlugIns/QuickSourcePreview.appex/Contents/MacOS/QuickSourcePreview
-rg -n 'URLSession|NWConnection|Process\(|NSTask|system\(|popen\(|WKWebView|JavaScript' QuickSourceLook QuickSourcePreview QuickSourceCore
+otool -L <app>/Contents/MacOS/LightQuickLook
+otool -L <app>/Contents/PlugIns/LightQuickLookPreview.appex/Contents/MacOS/LightQuickLookPreview
+rg -n 'URLSession|NWConnection|Process\(|NSTask|system\(|popen\(|WKWebView|JavaScript' LightQuickLook LightQuickLookPreview LightQuickLookCore
 ```
 
 The source scan finds no production networking, process execution, WebKit, or JavaScript API use. The final binary/signing inspection passed for an ad-hoc Hardened Runtime build. See [the dated security audit](SECURITY-AUDIT.md) for the full checklist, findings, sanitizer results, and the Developer ID/notarization limitation.

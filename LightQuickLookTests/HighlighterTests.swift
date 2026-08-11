@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import QuickSourceCore
+@testable import LightQuickLookCore
 
 final class HighlighterTests: XCTestCase {
     private func tokenTexts(_ source: String, _ result: HighlightResult, kind: TokenKind) -> [String] {

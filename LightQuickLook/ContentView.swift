@@ -3,7 +3,7 @@ import SwiftUI
 struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("QuickSourceLook").font(.title2.weight(.semibold))
+            Text("LightQuickLook").font(.title2.weight(.semibold))
             Text("Native, private Quick Look previews with lightweight syntax highlighting.")
                 .foregroundStyle(.secondary)
             Text("YAML · JSON · PowerShell · Bash · Terraform/HCL · Markdown")

@@ -1,5 +1,5 @@
 import Foundation
-import QuickSourceCore
+import LightQuickLookCore
 
 enum Failure: Error { case assertion(String) }
 
@@ -63,8 +63,8 @@ do {
         }
     }
     try check(TextChunker.split(text: "😀 source", targetUTF16Length: 0).joined() == "😀 source", "Non-positive chunk size")
-    print("QuickSourceSelfTest: PASS")
+    print("LightQuickLookSelfTest: PASS")
 } catch {
-    fputs("QuickSourceSelfTest: FAIL — \(error)\n", stderr)
+    fputs("LightQuickLookSelfTest: FAIL — \(error)\n", stderr)
     exit(1)
 }
