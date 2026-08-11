@@ -6,7 +6,7 @@ struct ContentView: View {
             Text("LightQuickLook").font(.title2.weight(.semibold))
             Text("Native, private Quick Look previews with lightweight syntax highlighting.")
                 .foregroundStyle(.secondary)
-            Text("YAML · JSON · PowerShell · Bash · Terraform/HCL · Markdown")
+            Text("YAML · JSON · PowerShell · Bash · Terraform/HCL")
                 .font(.callout.monospaced())
             Divider()
             Text("Enable the extension in System Settings → General → Login Items & Extensions → Quick Look.")

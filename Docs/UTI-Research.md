@@ -30,9 +30,7 @@ Results reflect this machine's current Launch Services database and installed ap
 
 ## Registration decision
 
-The host app imports the externally owned Markdown type:
-
-- `net.daringfireball.markdown` → `.md`, `.markdown`, conforms to `public.plain-text`;
+The host does not import or claim Markdown. `.md` and `.markdown` are intentionally left to dedicated extensions such as Markdown Preview.
 
 The host exports the application-owned narrow types:
 
@@ -46,7 +44,6 @@ public.yaml
 public.json
 public.shell-script
 public.bash-script
-net.daringfireball.markdown
 io.github.uponom.lightquicklook.powershell-source
 io.github.uponom.lightquicklook.hcl-source
 ```
@@ -73,7 +70,6 @@ The final Release bundle was registered from `build/Release`. PlugInKit reported
 - `.yaml` → `public.yaml`;
 - `.json` → `public.json`;
 - `.sh` → `public.shell-script`;
-- `.md` → `net.daringfireball.markdown`;
 - `.ps1` → `io.github.uponom.lightquicklook.powershell-source`;
 - `.tf` → `io.github.uponom.lightquicklook.hcl-source`.
 

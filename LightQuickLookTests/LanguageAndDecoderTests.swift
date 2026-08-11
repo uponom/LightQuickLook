@@ -3,6 +3,36 @@ import XCTest
 @testable import LightQuickLookCore
 
 final class LanguageAndDecoderTests: XCTestCase {
+    func testBundleRegistrationDoesNotClaimMarkdown() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+
+        func propertyList(at relativePath: String) throws -> [String: Any] {
+            let data = try Data(contentsOf: repositoryRoot.appendingPathComponent(relativePath))
+            return try XCTUnwrap(
+                PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+            )
+        }
+
+        let host = try propertyList(at: "LightQuickLook/Info.plist")
+        XCTAssertNil(host["UTImportedTypeDeclarations"])
+
+        let preview = try propertyList(at: "LightQuickLookPreview/Info.plist")
+        let extensionDictionary = try XCTUnwrap(preview["NSExtension"] as? [String: Any])
+        let attributes = try XCTUnwrap(extensionDictionary["NSExtensionAttributes"] as? [String: Any])
+        let supportedTypes = try XCTUnwrap(attributes["QLSupportedContentTypes"] as? [String])
+        XCTAssertFalse(supportedTypes.contains("net.daringfireball.markdown"))
+        XCTAssertEqual(Set(supportedTypes), [
+            "public.yaml",
+            "public.json",
+            "public.shell-script",
+            "public.bash-script",
+            "io.github.uponom.lightquicklook.powershell-source",
+            "io.github.uponom.lightquicklook.hcl-source",
+        ])
+    }
+
     func testLanguageDetectionUsesExtensionsBeforeGuessing() {
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.yml")), .yaml)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.psd1")), .powerShell)

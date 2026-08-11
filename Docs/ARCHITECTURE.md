@@ -2,7 +2,7 @@
 
 LightQuickLook consists of three production targets:
 
-1. `LightQuickLook`, a tiny SwiftUI host that explains extension activation, imports the established Markdown UTI, and exports narrow application-owned PowerShell/HCL UTIs.
+1. `LightQuickLook`, a tiny SwiftUI host that explains extension activation and exports narrow application-owned PowerShell/HCL UTIs.
 2. `LightQuickLookPreview`, a view-based Quick Look Preview Extension implementing `QLPreviewingController`.
 3. `LightQuickLookCore`, a statically linked pure-Foundation library containing decoding, language detection, chunking, and lexical highlighting.
 
@@ -36,4 +36,4 @@ Adding a future language requires a new `SourceLanguage` case, extension mapping
 - maximum bytes previewed: 8 MiB;
 - files larger than the limit receive a neutral truncation notice.
 
-Text is preserved exactly within the byte limit. JSON and Markdown are not reformatted or rendered.
+Text is preserved exactly within the byte limit. Registered formats are not reformatted or executed.

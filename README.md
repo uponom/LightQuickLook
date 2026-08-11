@@ -9,7 +9,8 @@ LightQuickLook is a minimal native macOS Quick Look viewer for source and config
 - PowerShell: `.ps1`, `.psm1`, `.psd1`
 - Bash/shell: `.sh`, `.bash`
 - Terraform/HCL: `.tf`, `.tfvars`, `.hcl`
-- Markdown source: `.md`, `.markdown`
+
+Markdown (`.md`, `.markdown`) is intentionally not registered. It remains available to dedicated preview extensions such as Markdown Preview.
 
 Minimum system: macOS 26.0. Apple Silicon is the primary target; the project does not hard-code an architecture and can be configured for a future Universal build.
 
@@ -65,7 +66,6 @@ Scripts/diagnose-quicklook.sh /Applications/LightQuickLook.app
 ## Current limitations
 
 - Lexical highlighting is intentionally incomplete and does not validate syntax.
-- Markdown is shown as source, not rendered HTML.
 - Files larger than 8 MiB are truncated in the preview.
 - UTF-8, UTF-8 BOM, UTF-16 LE BOM, UTF-16 BE BOM, and a Windows-1252 fallback are supported; there is no general encoding detector.
 - No line numbers, folding, themes, editing, nested fenced-language highlighting, or extensionless-file registration.
