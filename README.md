@@ -19,7 +19,7 @@ The app embeds a modern view-based Quick Look Preview Extension. Preview renderi
 
 Shipping dependencies are Apple system frameworks only. There are no Swift packages, CocoaPods, grammar databases, JavaScript runtimes, network calls, telemetry, helper processes, or copied third-party source.
 
-See [Architecture](Docs/ARCHITECTURE.md), [UTI research](Docs/UTI-Research.md), [Security](Docs/SECURITY.md), and [Performance](Docs/PERFORMANCE.md).
+See [Architecture](Docs/ARCHITECTURE.md), [UTI research](Docs/UTI-Research.md), [Security](Docs/SECURITY.md), the [2026-08-11 security audit](Docs/SECURITY-AUDIT.md), and [Performance](Docs/PERFORMANCE.md).
 
 ## Build and test
 

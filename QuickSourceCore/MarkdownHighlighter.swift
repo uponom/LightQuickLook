@@ -43,7 +43,7 @@ public struct MarkdownHighlighter: SyntaxHighlighter {
                     } else if u[i] == 91 {
                         let start = i; while i < end, u[i] != 93 { i += 1 }
                         if i + 1 < end, u[i] == 93, u[i + 1] == 40 { i += 2; while i < end, u[i] != 41 { i += 1 }; if i < end { i += 1 }; spans.append(TokenSpan(start, i - start, .link)) }
-                        else { i = min(end, start + 1) }
+                        else { i = end }
                     } else if u[i] == 42 || u[i] == 95 { spans.append(TokenSpan(i, 1, .directive)); i += 1 }
                     else { i += 1 }
                 }

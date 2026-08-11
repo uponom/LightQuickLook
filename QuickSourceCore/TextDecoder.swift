@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 public enum TextEncoding: String, Sendable {
     case utf8, utf16LittleEndian, utf16BigEndian, windows1252
@@ -64,10 +65,29 @@ public struct PreviewDocument: Sendable {
 
 public enum PreviewFileLoader {
     public static func load(url: URL) throws -> PreviewDocument {
-        let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-        guard values.isRegularFile == true else { throw CocoaError(.fileReadUnsupportedScheme) }
-        let size = UInt64(max(0, values.fileSize ?? 0))
-        let handle = try FileHandle(forReadingFrom: url)
+        guard url.isFileURL else { throw CocoaError(.fileReadUnsupportedScheme) }
+        let descriptor: Int32 = url.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return Int32(-1) }
+            return Darwin.open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK)
+        }
+        guard descriptor >= 0 else {
+            let code = errno
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(code))
+        }
+
+        var metadata = stat()
+        guard fstat(descriptor, &metadata) == 0 else {
+            let code = errno
+            Darwin.close(descriptor)
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(code))
+        }
+        guard metadata.st_mode & S_IFMT == S_IFREG else {
+            Darwin.close(descriptor)
+            throw CocoaError(.fileReadUnsupportedScheme)
+        }
+
+        let size = UInt64(max(Int64(0), metadata.st_size))
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         defer { try? handle.close() }
         let limit = min(size, UInt64(PreviewPolicy.maximumPreviewBytes))
         var data = Data()

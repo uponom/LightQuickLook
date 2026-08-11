@@ -48,19 +48,33 @@ func scanQuoted(_ units: [UInt16], from start: Int, quote: UInt16, escapes: Bool
 }
 
 func hasPrefix(_ units: [UInt16], at index: Int, _ literal: String, caseInsensitive: Bool = false) -> Bool {
-    let target = Array(literal.utf16)
-    guard index + target.count <= units.count else { return false }
-    for offset in target.indices {
-        var lhs = units[index + offset], rhs = target[offset]
+    guard index >= 0, index <= units.count else { return false }
+    let target = literal.utf16
+    guard target.count <= units.count - index else { return false }
+    var offset = 0
+    for targetUnit in target {
+        var lhs = units[index + offset], rhs = targetUnit
         if caseInsensitive {
             if lhs >= 65 && lhs <= 90 { lhs += 32 }
             if rhs >= 65 && rhs <= 90 { rhs += 32 }
         }
         if lhs != rhs { return false }
+        offset += 1
     }
     return true
 }
 
+func slice(_ units: [UInt16], from start: Int, to end: Int, equals target: [UInt16]) -> Bool {
+    guard start >= 0, end >= start, end <= units.count, end - start == target.count else { return false }
+    for offset in target.indices where units[start + offset] != target[offset] { return false }
+    return true
+}
+
 func validated(_ spans: [TokenSpan], length: Int) -> [TokenSpan] {
-    spans.filter { $0.range.location >= 0 && $0.range.length >= 0 && NSMaxRange($0.range) <= length }
+    spans.filter {
+        $0.range.location >= 0 &&
+        $0.range.length >= 0 &&
+        $0.range.location <= length &&
+        $0.range.length <= length - $0.range.location
+    }
 }

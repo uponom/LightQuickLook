@@ -13,7 +13,10 @@ final class HighlighterTests: XCTestCase {
         for span in result.spans {
             XCTAssertGreaterThanOrEqual(span.range.location, 0, file: file, line: line)
             XCTAssertGreaterThanOrEqual(span.range.length, 0, file: file, line: line)
-            XCTAssertLessThanOrEqual(NSMaxRange(span.range), length, file: file, line: line)
+            XCTAssertLessThanOrEqual(span.range.location, length, file: file, line: line)
+            if span.range.location >= 0, span.range.location <= length {
+                XCTAssertLessThanOrEqual(span.range.length, length - span.range.location, file: file, line: line)
+            }
         }
     }
 
@@ -111,10 +114,22 @@ final class HighlighterTests: XCTestCase {
     }
 
     func testAdversarialRunsRemainBounded() {
-        let samples = [String(repeating: "\"", count: 100_000), String(repeating: "#", count: 100_000), String(repeating: "${", count: 50_000), String(repeating: "<", count: 100_000)]
+        let samples = [String(repeating: "\"", count: 100_000), String(repeating: "#", count: 100_000), String(repeating: "${", count: 50_000), String(repeating: "<", count: 100_000), String(repeating: "[", count: 100_000), String(repeating: "/*", count: 50_000)]
         for language in SourceLanguage.allCases {
             let highlighter = HighlighterFactory.make(for: language)
             for source in samples { assertValidRanges(source, highlighter.highlight(source, state: .normal)) }
         }
+    }
+
+    func testChunkerMakesProgressForNonPositiveTargets() {
+        let source = "😀 Русский text"
+        XCTAssertEqual(TextChunker.split(text: source, targetUTF16Length: 0).joined(), source)
+        XCTAssertEqual(TextChunker.split(text: source, targetUTF16Length: -10).joined(), source)
+    }
+
+    func testRangeValidationRejectsOverflowingAndNegativeRanges() {
+        let valid = TokenSpan(2, 3, .string)
+        let spans = [valid, TokenSpan(-1, 1, .comment), TokenSpan(Int.max, 1, .number), TokenSpan(1, Int.max, .keyword)]
+        XCTAssertEqual(validated(spans, length: 5), [valid])
     }
 }

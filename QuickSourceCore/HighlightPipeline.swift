@@ -27,18 +27,21 @@ public enum HighlightPipeline {
 public enum TextChunker {
     public static func split(text: String, targetUTF16Length: Int = 256 * 1_024) -> [String] {
         guard !text.isEmpty else { return [""] }
+        let safeTargetLength = max(1, targetUTF16Length)
         let nsText = text as NSString
         var chunks: [String] = []
         var location = 0
         while location < nsText.length {
-            var length = min(targetUTF16Length, nsText.length - location)
+            var length = min(safeTargetLength, nsText.length - location)
             if location + length < nsText.length {
                 let searchStart = max(location, location + length - 8_192)
                 let search = nsText.range(of: "\n", options: .backwards, range: NSRange(location: searchStart, length: location + length - searchStart))
                 if search.location != NSNotFound { length = search.location + search.length - location }
                 if length > 0 {
                     let last = nsText.character(at: location + length - 1)
-                    if last >= 0xD800 && last <= 0xDBFF { length -= 1 }
+                    if last >= 0xD800 && last <= 0xDBFF {
+                        length = length == 1 ? min(2, nsText.length - location) : length - 1
+                    }
                 }
             }
             if length <= 0 { length = min(1, nsText.length - location) }

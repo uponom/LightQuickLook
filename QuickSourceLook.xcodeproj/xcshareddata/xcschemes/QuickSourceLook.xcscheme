@@ -5,7 +5,7 @@
       <BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
         <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="F30000000000000000000001" BuildableName="QuickSourceLook.app" BlueprintName="QuickSourceLook" ReferencedContainer="container:QuickSourceLook.xcodeproj"/>
       </BuildActionEntry>
-      <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="YES">
+      <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="NO">
         <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="F30000000000000000000004" BuildableName="QuickSourceTests.xctest" BlueprintName="QuickSourceTests" ReferencedContainer="container:QuickSourceLook.xcodeproj"/>
       </BuildActionEntry>
     </BuildActionEntries>

@@ -17,7 +17,7 @@ public struct BashHighlighter: SyntaxHighlighter {
                 if stripTabs { while compare < end, u[compare] == 9 { compare += 1 } }
                 spans.append(TokenSpan(start, end - start, .string))
                 i = nextLine(in: u, after: end)
-                if Array(u[compare..<end]) == target { carried = .normal; break }
+                if slice(u, from: compare, to: end, equals: target) { carried = .normal; break }
             }
         }
         while i < u.count {
@@ -57,7 +57,7 @@ public struct BashHighlighter: SyntaxHighlighter {
                         if stripTabs { while compare < bodyEnd, u[compare] == 9 { compare += 1 } }
                         spans.append(TokenSpan(bodyStart, bodyEnd - bodyStart, .string))
                         i = nextLine(in: u, after: bodyEnd)
-                        if Array(u[compare..<bodyEnd]) == target { carried = .normal; break }
+                        if slice(u, from: compare, to: bodyEnd, equals: target) { carried = .normal; break }
                     }
                 }
             } else if isASCIIAlpha(u[i]) || u[i] == 95 {

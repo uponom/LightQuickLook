@@ -40,6 +40,6 @@ public struct JSONHighlighter: SyntaxHighlighter {
             default: s.advance()
             }
         }
-        return HighlightResult(spans: spans, state: carried)
+        return HighlightResult(spans: validated(spans, length: s.units.count), state: carried)
     }
 }

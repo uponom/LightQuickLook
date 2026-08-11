@@ -28,7 +28,7 @@ There is no network client/server, automation, camera, microphone, location, con
 
 ## Defensive behavior
 
-Reads are capped at 8 MiB, handles close immediately after loading, BOM checks precede binary heuristics, malformed/unsupported encodings produce a neutral message, and all token ranges are bounded before attribution. Cancellation is checked between expensive stages and chunks.
+Reads are capped at 8 MiB. The loader opens the final path without following symbolic links, validates the same descriptor as a regular file, and closes it immediately after loading. BOM checks precede binary heuristics, malformed/unsupported encodings produce a neutral message, and token ranges use overflow-safe bounds checks before attribution. Cancellation is checked during reads and between expensive stages and chunks.
 
 ## Audit commands
 
@@ -42,4 +42,4 @@ otool -L <app>/Contents/PlugIns/QuickSourcePreview.appex/Contents/MacOS/QuickSou
 rg -n 'URLSession|NWConnection|Process\(|NSTask|system\(|popen\(|WKWebView|JavaScript' QuickSourceLook QuickSourcePreview QuickSourceCore
 ```
 
-The source scan currently finds no production networking, process execution, WebKit, or JavaScript API use. Binary linkage/signing inspection remains pending because full Xcode is not installed in the present environment.
+The source scan finds no production networking, process execution, WebKit, or JavaScript API use. The final binary/signing inspection passed for an ad-hoc Hardened Runtime build. See [the dated security audit](SECURITY-AUDIT.md) for the full checklist, findings, sanitizer results, and the Developer ID/notarization limitation.

@@ -10,7 +10,13 @@ func check(_ condition: @autoclosure () -> Bool, _ message: String) throws {
 func validate(_ text: String, _ result: HighlightResult) throws {
     let length = (text as NSString).length
     for span in result.spans {
-        try check(span.range.location >= 0 && span.range.length >= 0 && NSMaxRange(span.range) <= length, "Invalid range \(span.range) for length \(length)")
+        try check(
+            span.range.location >= 0 &&
+            span.range.length >= 0 &&
+            span.range.location <= length &&
+            span.range.length <= length - span.range.location,
+            "Invalid range \(span.range) for length \(length)"
+        )
     }
 }
 
@@ -52,10 +58,11 @@ do {
             }
             try validate(text, lexer.highlight(text, state: .normal))
         }
-        for text in [String(repeating: "\"", count: 100_000), String(repeating: "#", count: 100_000), String(repeating: "${", count: 50_000), String(repeating: "<", count: 100_000)] {
+        for text in [String(repeating: "\"", count: 100_000), String(repeating: "#", count: 100_000), String(repeating: "${", count: 50_000), String(repeating: "<", count: 100_000), String(repeating: "[", count: 100_000), String(repeating: "/*", count: 50_000)] {
             try validate(text, lexer.highlight(text, state: .normal))
         }
     }
+    try check(TextChunker.split(text: "😀 source", targetUTF16Length: 0).joined() == "😀 source", "Non-positive chunk size")
     print("QuickSourceSelfTest: PASS")
 } catch {
     fputs("QuickSourceSelfTest: FAIL — \(error)\n", stderr)

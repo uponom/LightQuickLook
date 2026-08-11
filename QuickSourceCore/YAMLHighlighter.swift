@@ -45,7 +45,8 @@ public struct YAMLHighlighter: SyntaxHighlighter {
                     i += 1; while i < end, isDigit(units[i]) || units[i] == 46 || units[i] == 95 { i += 1 }
                     spans.append(TokenSpan(start, i - start, .number))
                 } else if isASCIIAlpha(units[i]) || units[i] == 95 {
-                    i += 1; while i < end, isIdentifier(units[i]) || units[i] == 46 { i += 1 }
+                    i += 1
+                    while i < end, units[i] != 58, isIdentifier(units[i]) || units[i] == 46 { i += 1 }
                     var look = i; while look < end, isHorizontalSpace(units[look]) { look += 1 }
                     let word = ascii(units[start..<i]).lowercased()
                     if look < end, units[look] == 58, keyCandidate { spans.append(TokenSpan(start, i - start, .property)) }

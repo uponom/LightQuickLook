@@ -81,11 +81,18 @@ final class CodePreviewView: NSView {
 
     private func attributed(_ chunk: HighlightedChunk) -> NSAttributedString {
         let value = NSMutableAttributedString(string: chunk.text, attributes: baseAttributes)
-        for span in chunk.spans where NSMaxRange(span.range) <= value.length {
+        for span in chunk.spans where isValid(span.range, forLength: value.length) {
             value.addAttribute(.foregroundColor, value: color(for: span.kind), range: span.range)
             if span.kind == .heading { value.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 13, weight: .semibold), range: span.range) }
         }
         return value
+    }
+
+    private func isValid(_ range: NSRange, forLength length: Int) -> Bool {
+        range.location >= 0 &&
+        range.length >= 0 &&
+        range.location <= length &&
+        range.length <= length - range.location
     }
 
     private func color(for kind: TokenKind) -> NSColor {

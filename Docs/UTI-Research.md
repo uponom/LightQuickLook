@@ -30,11 +30,14 @@ Results reflect this machine's current Launch Services database and installed ap
 
 ## Registration decision
 
-The host app imports these missing/narrow types:
+The host app imports the externally owned Markdown type:
 
 - `net.daringfireball.markdown` → `.md`, `.markdown`, conforms to `public.plain-text`;
-- `com.example.quicksource.powershell-source` → `.ps1`, `.psm1`, `.psd1`, conforms to `public.source-code`;
-- `com.example.quicksource.hcl-source` → `.tf`, `.tfvars`, `.hcl`, conforms to `public.source-code`.
+
+The host exports the application-owned narrow types:
+
+- `io.github.uponom.lightquicklook.powershell-source` → `.ps1`, `.psm1`, `.psd1`, conforms to `public.source-code`;
+- `io.github.uponom.lightquicklook.hcl-source` → `.tf`, `.tfvars`, `.hcl`, conforms to `public.source-code`.
 
 The preview extension registers exactly:
 
@@ -44,8 +47,8 @@ public.json
 public.shell-script
 public.bash-script
 net.daringfireball.markdown
-com.example.quicksource.powershell-source
-com.example.quicksource.hcl-source
+io.github.uponom.lightquicklook.powershell-source
+io.github.uponom.lightquicklook.hcl-source
 ```
 
 It does not register `public.data`, `public.item`, `public.content`, `public.text`, `public.plain-text`, or `public.source-code`.
@@ -63,6 +66,15 @@ This is broader than Bash. Empirical checks show these types also conform to `pu
 
 Consequently QuickSourceLook may be offered as a handler for those scripts. The extension does not claim their syntax: extension-first language detection falls back to safe plain monospaced text. This compromise must be rechecked after installation because Quick Look handler precedence can also depend on other installed applications.
 
-## Post-install verification still required
+## Post-build verification
 
-The current machine has Command Line Tools but no full Xcode installation, so the app bundle could not be built and registered. After building/installing, rerun `Scripts/diagnose-quicklook.sh /path/to/QuickSourceLook.app`, verify every sample with `mdls`, and inspect `pluginkit` output. Finder Space-bar invocation remains a manual validation step.
+The final Release bundle was registered from `build/Release`. PlugInKit reported `io.github.uponom.LightQuickLook.Preview` at the expected embedded path and the extension was enabled. Fresh files resolved as follows:
+
+- `.yaml` → `public.yaml`;
+- `.json` → `public.json`;
+- `.sh` → `public.shell-script`;
+- `.md` → `net.daringfireball.markdown`;
+- `.ps1` → `io.github.uponom.lightquicklook.powershell-source`;
+- `.tf` → `io.github.uponom.lightquicklook.hcl-source`.
+
+Real view-based Quick Look windows were opened for YAML and JSON and displayed the expected source and highlighting. Existing files can retain cached `dyn.*` Spotlight metadata until reindexed; fresh-file checks avoid mistaking that cache for current Launch Services registration.

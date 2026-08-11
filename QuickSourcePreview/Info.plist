@@ -19,8 +19,8 @@
                 <string>public.shell-script</string>
                 <string>public.bash-script</string>
                 <string>net.daringfireball.markdown</string>
-                <string>com.example.quicksource.powershell-source</string>
-                <string>com.example.quicksource.hcl-source</string>
+                <string>io.github.uponom.lightquicklook.powershell-source</string>
+                <string>io.github.uponom.lightquicklook.hcl-source</string>
             </array>
         </dict>
         <key>NSExtensionPointIdentifier</key><string>com.apple.quicklook.preview</string>

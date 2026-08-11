@@ -14,7 +14,7 @@ public struct TerraformHighlighter: SyntaxHighlighter {
                 let start = i, end = lineEnd(in: u, from: i)
                 var compare = start; if stripTabs { while compare < end, isHorizontalSpace(u[compare]) { compare += 1 } }
                 spans.append(TokenSpan(start, end - start, .string)); i = nextLine(in: u, after: end)
-                if Array(u[compare..<end]) == target { carried = .normal; break }
+                if slice(u, from: compare, to: end, equals: target) { carried = .normal; break }
             }
         }
         while i < u.count {
@@ -48,7 +48,7 @@ public struct TerraformHighlighter: SyntaxHighlighter {
                         if strip { while compare < bodyEnd, isHorizontalSpace(u[compare]) { compare += 1 } }
                         spans.append(TokenSpan(bodyStart, bodyEnd - bodyStart, .string))
                         i = nextLine(in: u, after: bodyEnd)
-                        if Array(u[compare..<bodyEnd]) == target { carried = .normal; break }
+                        if slice(u, from: compare, to: bodyEnd, equals: target) { carried = .normal; break }
                     }
                 }
             } else if isDigit(u[i]) || (u[i] == 45 && i + 1 < u.count && isDigit(u[i + 1])) {
