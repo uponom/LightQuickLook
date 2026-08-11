@@ -52,13 +52,26 @@ final class HighlighterTests: XCTestCase {
         let source = "if ($env:PATH -match 'bin') { # Русский 😀\n  Write-Output \"ok\"\n}\n<# open"
         let result = PowerShellHighlighter().highlight(source, state: .normal)
         assertValidRanges(source, result)
-        XCTAssertTrue(tokenTexts(source, result, kind: .keyword).contains("if"))
+        XCTAssertTrue(tokenTexts(source, result, kind: .controlKeyword).contains("if"))
         XCTAssertTrue(tokenTexts(source, result, kind: .variable).contains("$env:PATH"))
         XCTAssertTrue(tokenTexts(source, result, kind: .operator).contains("-match"))
         XCTAssertEqual(result.state, .blockComment)
         let continued = PowerShellHighlighter().highlight(" continued #> return", state: result.state)
         XCTAssertEqual(continued.state, .normal)
-        XCTAssertTrue(tokenTexts(" continued #> return", continued, kind: .keyword).contains("return"))
+        XCTAssertTrue(tokenTexts(" continued #> return", continued, kind: .controlKeyword).contains("return"))
+    }
+
+    func testPowerShellUsesVSCodeScopeEquivalentKinds() {
+        let source = "param([string]$Name)\nWrite-Output \"Hello $Name\""
+        let result = PowerShellHighlighter().highlight(source, state: .normal)
+        assertValidRanges(source, result)
+
+        XCTAssertEqual(tokenTexts(source, result, kind: .controlKeyword), ["param"])
+        XCTAssertEqual(tokenTexts(source, result, kind: .type), ["string"])
+        XCTAssertEqual(tokenTexts(source, result, kind: .variable), ["$Name"])
+        XCTAssertEqual(tokenTexts(source, result, kind: .supportFunction), ["Write-Output"])
+        XCTAssertEqual(tokenTexts(source, result, kind: .support), ["$Name"])
+        XCTAssertEqual(tokenTexts(source, result, kind: .string), ["\"Hello $Name\""])
     }
 
     func testPowerShellHereStringEndsOnlyAtLineStart() {

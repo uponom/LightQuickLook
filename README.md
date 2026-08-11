@@ -20,7 +20,9 @@ The app embeds a modern view-based Quick Look Preview Extension. Preview renderi
 
 Shipping dependencies are Apple system frameworks only. There are no Swift packages, CocoaPods, grammar databases, JavaScript runtimes, network calls, telemetry, helper processes, or copied third-party source.
 
-See [Architecture](Docs/ARCHITECTURE.md), [UTI research](Docs/UTI-Research.md), [Security](Docs/SECURITY.md), the [2026-08-11 security audit](Docs/SECURITY-AUDIT.md), and [Performance](Docs/PERFORMANCE.md).
+The preview follows the system appearance using palettes based on VS Code Dark 2026 and Light 2026, including relevant inherited Dark+/Light+ scope precedence. Operators and brackets deliberately use the full editor foreground color for reliable contrast.
+
+See [Architecture](Docs/ARCHITECTURE.md), [Theming](Docs/THEMING.md), [UTI research](Docs/UTI-Research.md), [Security](Docs/SECURITY.md), the [2026-08-11 security audit](Docs/SECURITY-AUDIT.md), and [Performance](Docs/PERFORMANCE.md).
 
 ## Build and test
 

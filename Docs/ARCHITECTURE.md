@@ -8,6 +8,8 @@ LightQuickLook consists of three production targets:
 
 The extension UI is native AppKit: `NSScrollView` contains a non-editable, selectable, no-wrap `NSTextView`. No HTML, WebKit, temporary rendered files, or subprocesses are involved.
 
+`CodePreviewView` selects the VS Code 2026 light or dark palette from its effective macOS appearance. Token identity is retained as a private attributed-string attribute, allowing an already open preview to be recolored when system appearance changes without re-reading the file.
+
 ## Preview pipeline
 
 ```text

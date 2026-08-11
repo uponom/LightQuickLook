@@ -21,7 +21,7 @@ public enum LanguageDetector {
 }
 
 public enum TokenKind: String, CaseIterable, Sendable {
-    case plain, comment, string, number, keyword, literal, variable, property, `operator`, directive, heading, link, code, punctuation
+    case plain, comment, string, number, keyword, controlKeyword, literal, variable, property, `operator`, directive, type, support, supportFunction, heading, link, code, punctuation
 }
 
 public struct TokenSpan: Equatable, Sendable {
