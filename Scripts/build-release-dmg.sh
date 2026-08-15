@@ -15,9 +15,27 @@ checksum_path="$output_directory/${artifact_base}-SHA256.txt"
 release_build_directory="$repository_root/build/Release"
 derived_data_directory="$(mktemp -d /private/tmp/LightQuickLook-release-derived.XXXXXX)"
 dmg_staging_directory="$(mktemp -d /private/tmp/LightQuickLook-release-dmg.XXXXXX)"
+lsregister_path="/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister"
+
+unregister_build_application() {
+  local application_path="$1"
+  local extension_path="$application_path/Contents/PlugIns/LightQuickLookPreview.appex"
+
+  if [[ -d "$extension_path" ]]; then
+    /usr/bin/pluginkit -r "$extension_path" >/dev/null 2>&1 || true
+  fi
+  if [[ -d "$application_path" ]]; then
+    "$lsregister_path" -u "$application_path" >/dev/null 2>&1 || true
+  fi
+}
 
 cleanup() {
+  local exit_status=$?
+  set +e
+  unregister_build_application "$derived_data_directory/Build/Products/Debug/LightQuickLook.app"
+  unregister_build_application "$release_build_directory/LightQuickLook.app"
   rm -rf "$derived_data_directory" "$dmg_staging_directory"
+  return "$exit_status"
 }
 trap cleanup EXIT
 
