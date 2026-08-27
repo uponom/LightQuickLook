@@ -49,7 +49,9 @@ final class CodePreviewView: NSView {
     private let controlsBar = NSView()
     private let separator = NSBox()
     private let scrollView = FontZoomScrollView()
-    private let textView = FontZoomTextView(frame: .zero)
+    // Construct the text system explicitly with NSTextLayoutManager. Using the
+    // frame initializer would silently create the TextKit 1 compatibility stack.
+    private let textView = FontZoomTextView(usingTextLayoutManager: true)
     private let decreaseFontButton = NSButton(title: "−", target: nil, action: nil)
     private let increaseFontButton = NSButton(title: "+", target: nil, action: nil)
     private(set) var fontSize = CodePreviewView.defaultFontSize

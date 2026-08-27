@@ -55,7 +55,7 @@ The **Open Anyway** option appears only after a blocked launch attempt. A manage
 
 ## Design
 
-The app embeds a modern view-based Quick Look Preview Extension. Preview rendering uses only `NSScrollView`, `NSTextView`, and attributed source text. The Foundation core performs bounded decoding and deterministic lexical highlighting in cancellable background tasks. The original source is not parsed into objects, reformatted, rendered as HTML, or executed.
+The app embeds a modern view-based Quick Look Preview Extension. Preview rendering uses only native `NSScrollView`, a TextKit 2-backed `NSTextView`, and attributed source text. The Foundation core performs bounded decoding and deterministic lexical highlighting in cancellable background tasks. The original source is not parsed into objects, reformatted, rendered as HTML, or executed.
 
 Shipping dependencies are Apple system frameworks only. There are no Swift packages, CocoaPods, grammar databases, JavaScript runtimes, network calls, telemetry, helper processes, or copied third-party source.
 

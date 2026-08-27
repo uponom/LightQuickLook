@@ -26,6 +26,8 @@ The measured 256 KiB and 1 MiB lexer times are comfortably below the initial 100
 
 Interactive font scaling uses `NSScrollView` magnification. It does not rewrite the attributed text storage or re-run syntax highlighting. A regression test loads a source buffer larger than 200 KiB, performs 20 alternating zoom operations, and verifies that the text storage emits no edit notifications.
 
+The preview text view is explicitly constructed with TextKit 2 (`NSTextLayoutManager`) on macOS 26. Automated coverage verifies that loading attributed content does not fall back to the TextKit 1 compatibility stack. End-to-end viewport and first-frame measurements are tracked separately from the lexer benchmark above.
+
 ## Bundle size
 
 The final ad-hoc-signed `arm64` Release product is approximately 484 KiB; its embedded preview extension is approximately 376 KiB, and the compressed DMG is approximately 140 KiB. The project embeds no fonts, grammar databases, JavaScript, third-party frameworks, or image collections, and statically links its own small core.

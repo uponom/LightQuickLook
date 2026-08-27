@@ -9,6 +9,25 @@ private final class SendableCounter: @unchecked Sendable {
 }
 
 final class LanguageAndDecoderTests: XCTestCase {
+    @MainActor
+    func testCodePreviewViewUsesTextKit2BeforeAndAfterContentChanges() throws {
+        let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
+        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
+
+        XCTAssertNotNil(textView.textLayoutManager)
+        XCTAssertNotNil(textView.textContentStorage)
+
+        view.replace(with: HighlightedChunk(
+            text: #"{"enabled":true}"#,
+            spans: [TokenSpan(1, 9, .property), TokenSpan(11, 4, .literal)]
+        ))
+
+        XCTAssertNotNil(textView.textLayoutManager)
+        XCTAssertNotNil(textView.textContentStorage)
+        XCTAssertEqual(textView.string, #"{"enabled":true}"#)
+    }
+
     func testVSCode2026ThemesUseOfficialEditorColorsAndReadableTokens() {
         XCTAssertEqual(VSCode2026Theme.dark.background.hex, 0x121314)
         XCTAssertEqual(VSCode2026Theme.dark.foreground.hex, 0xBBBEBF)
