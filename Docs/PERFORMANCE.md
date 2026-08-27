@@ -24,6 +24,8 @@ Peak RSS for the benchmark process at the 8 MiB case was 135.1 MiB. The benchmar
 
 The measured 256 KiB and 1 MiB lexer times are comfortably below the initial 100 ms goals, and the 8 MiB decode + lexical + attribution work totals about 303 ms. AppKit cold-start cost and Finder/Quick Look overhead are separate.
 
+Interactive font scaling uses `NSScrollView` magnification. It does not rewrite the attributed text storage or re-run syntax highlighting. A regression test loads a source buffer larger than 200 KiB, performs 20 alternating zoom operations, and verifies that the text storage emits no edit notifications.
+
 ## Bundle size
 
-The final ad-hoc-signed Universal (`arm64 + x86_64`) Release product is approximately 672 KiB; its embedded preview extension is approximately 468 KiB. The project embeds no fonts, grammar databases, JavaScript, third-party frameworks, or image collections, and statically links its own small core.
+The final ad-hoc-signed `arm64` Release product is approximately 484 KiB; its embedded preview extension is approximately 376 KiB, and the compressed DMG is approximately 140 KiB. The project embeds no fonts, grammar databases, JavaScript, third-party frameworks, or image collections, and statically links its own small core.

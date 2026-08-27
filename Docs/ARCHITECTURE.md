@@ -6,7 +6,7 @@ LightQuickLook consists of three production targets:
 2. `LightQuickLookPreview`, a view-based Quick Look Preview Extension implementing `QLPreviewingController`.
 3. `LightQuickLookCore`, a statically linked pure-Foundation library containing decoding, language detection, chunking, and lexical highlighting.
 
-The extension UI is native AppKit: `NSScrollView` contains a non-editable, selectable, no-wrap `NSTextView`. No HTML, WebKit, temporary rendered files, or subprocesses are involved.
+The extension UI is native AppKit: a compact font-size control bar sits above an `NSScrollView` containing a non-editable, selectable, no-wrap `NSTextView`. Buttons, native Carbon hotkeys registered only while the preview view is attached to a window, and Control-scroll events share one bounded 8–32 pt font-size state. The hotkeys are necessary because Finder owns the Quick Look window and consumes its Command key equivalents before ordinary AppKit events reach the extension process. Font changes use the scroll view's native magnification instead of rewriting every font attribute in the document, so repeated zoom actions do not trigger an O(n) text-storage edit and full relayout. The buttons use AppKit's native mouse-tracking loop and treat repeated clicks as separate font-size actions. No HTML, WebKit, temporary rendered files, or subprocesses are involved.
 
 `CodePreviewView` selects the VS Code 2026 light or dark palette from its effective macOS appearance. Token identity is retained as a private attributed-string attribute, allowing an already open preview to be recolored when system appearance changes without re-reading the file.
 

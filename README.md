@@ -61,6 +61,8 @@ Shipping dependencies are Apple system frameworks only. There are no Swift packa
 
 The preview follows the system appearance using palettes based on VS Code Dark 2026 and Light 2026, including relevant inherited Dark+/Light+ scope precedence. Operators and brackets deliberately use the full editor foreground color for reliable contrast.
 
+Font size can be changed for the current preview with the `−` and `+` controls above the source, with `⌘−` and `⌘+`, or by scrolling while holding Control. The supported range is 8–32 pt. Scaling uses native `NSScrollView` magnification, so changing the size does not rebuild the highlighted text even for large previews.
+
 See [Architecture](Docs/ARCHITECTURE.md), [Theming](Docs/THEMING.md), [UTI research](Docs/UTI-Research.md), [Security](Docs/SECURITY.md), the [2026-08-11 security audit](Docs/SECURITY-AUDIT.md), and [Performance](Docs/PERFORMANCE.md).
 
 ## Build from source

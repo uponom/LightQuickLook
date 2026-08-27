@@ -1,7 +1,12 @@
 import AppKit
+import Carbon.HIToolbox
 import Foundation
 import XCTest
 @testable import LightQuickLookCore
+
+private final class SendableCounter: @unchecked Sendable {
+    var value = 0
+}
 
 final class LanguageAndDecoderTests: XCTestCase {
     func testVSCode2026ThemesUseOfficialEditorColorsAndReadableTokens() {
@@ -105,6 +110,245 @@ final class LanguageAndDecoderTests: XCTestCase {
         try assertColors(for: .light)
     }
 
+    @MainActor
+    func testFontSizeButtonsMagnifyRenderedTextWithoutRestylingAndClampAtBounds() throws {
+        let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        let source = "# Heading\nplain\n"
+        view.replace(with: HighlightedChunk(
+            text: source,
+            spans: [TokenSpan(0, 9, .heading)]
+        ))
+
+        let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
+        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
+        let storage = try XCTUnwrap(textView.textStorage)
+        let decreaseButton = try XCTUnwrap(
+            descendants(of: NSButton.self, in: view).first {
+                $0.identifier?.rawValue == "decreaseFontSize"
+            }
+        )
+        let increaseButton = try XCTUnwrap(
+            descendants(of: NSButton.self, in: view).first {
+                $0.identifier?.rawValue == "increaseFontSize"
+            }
+        )
+
+        XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize)
+        XCTAssertTrue(decreaseButton.isEnabled)
+        XCTAssertTrue(increaseButton.isEnabled)
+        XCTAssertEqual(decreaseButton.keyEquivalent, "-")
+        XCTAssertEqual(decreaseButton.keyEquivalentModifierMask, [.command])
+        XCTAssertEqual(increaseButton.keyEquivalent, "+")
+        XCTAssertEqual(increaseButton.keyEquivalentModifierMask, [.command])
+
+        increaseButton.performClick(nil)
+        XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize + 1)
+        XCTAssertEqual(
+            scrollView.magnification,
+            (CodePreviewView.defaultFontSize + 1) / CodePreviewView.defaultFontSize,
+            accuracy: 0.0001
+        )
+        for offset in [0, storage.length - 1] {
+            let font = try XCTUnwrap(storage.attribute(.font, at: offset, effectiveRange: nil) as? NSFont)
+            XCTAssertEqual(font.pointSize, CodePreviewView.defaultFontSize)
+        }
+
+        view.adjustFontSize(by: 100)
+        XCTAssertEqual(view.fontSize, CodePreviewView.maximumFontSize)
+        XCTAssertFalse(increaseButton.isEnabled)
+        XCTAssertTrue(decreaseButton.isEnabled)
+
+        view.adjustFontSize(by: -100)
+        XCTAssertEqual(view.fontSize, CodePreviewView.minimumFontSize)
+        XCTAssertTrue(increaseButton.isEnabled)
+        XCTAssertFalse(decreaseButton.isEnabled)
+    }
+
+    @MainActor
+    func testFontButtonsUseNativeMultiClickTracking() throws {
+        let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        let increaseButton = try XCTUnwrap(
+            descendants(of: NSButton.self, in: view).first {
+                $0.identifier?.rawValue == "increaseFontSize"
+            }
+        )
+
+        XCTAssertTrue(type(of: increaseButton) == NSButton.self)
+        XCTAssertFalse(increaseButton.ignoresMultiClick)
+        for _ in 0..<6 { increaseButton.performClick(nil) }
+
+        XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize + 6)
+    }
+
+    @MainActor
+    func testLargeDocumentZoomDoesNotMutateTextStorage() throws {
+        let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        let line = #"{"key":"value","enabled":true,"count":12345}"# + "\n"
+        let source = String(repeating: line, count: 5_000)
+        XCTAssertGreaterThan(source.utf8.count, 200_000)
+        view.replace(with: HighlightedChunk(text: source, spans: []))
+
+        let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
+        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
+        let storage = try XCTUnwrap(textView.textStorage)
+        let editNotificationCount = SendableCounter()
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSTextStorage.didProcessEditingNotification,
+            object: storage,
+            queue: nil
+        ) { _ in
+            editNotificationCount.value += 1
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        for _ in 0..<10 {
+            view.adjustFontSize(by: 1)
+            view.adjustFontSize(by: -1)
+        }
+
+        XCTAssertEqual(editNotificationCount.value, 0)
+        XCTAssertEqual(storage.string, source)
+        XCTAssertEqual(scrollView.magnification, 1, accuracy: 0.0001)
+    }
+
+    @MainActor
+    func testCommandKeyEquivalentsAndControlScrollChangeFontSize() throws {
+        let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        let commandPlus = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.command, .shift],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: "+",
+            charactersIgnoringModifiers: "=",
+            isARepeat: false,
+            keyCode: 24
+        ))
+        let commandMinus = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.command],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: "-",
+            charactersIgnoringModifiers: "-",
+            isARepeat: false,
+            keyCode: 27
+        ))
+
+        let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
+        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
+        XCTAssertTrue(textView.performKeyEquivalent(with: commandPlus))
+        XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize + 1)
+        XCTAssertTrue(view.performKeyEquivalent(with: commandMinus))
+        XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize)
+
+        let cgEvent = try XCTUnwrap(CGEvent(
+            scrollWheelEvent2Source: nil,
+            units: .line,
+            wheelCount: 1,
+            wheel1: 1,
+            wheel2: 0,
+            wheel3: 0
+        ))
+        cgEvent.flags = .maskControl
+        let controlScroll = try XCTUnwrap(NSEvent(cgEvent: cgEvent))
+        scrollView.scrollWheel(with: controlScroll)
+        XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize + 1)
+    }
+
+    @MainActor
+    func testSystemHotKeyDefinitionsAndRouting() {
+        XCTAssertEqual(FontSizeHotKeyMonitor.shortcuts, [
+            FontSizeHotKeyMonitor.Shortcut(
+                action: .decrease,
+                keyCode: UInt32(kVK_ANSI_Minus),
+                modifiers: UInt32(cmdKey),
+                identifier: FontSizeHotKeyMonitor.Action.decrease.rawValue
+            ),
+            FontSizeHotKeyMonitor.Shortcut(
+                action: .increase,
+                keyCode: UInt32(kVK_ANSI_Equal),
+                modifiers: UInt32(cmdKey | shiftKey),
+                identifier: FontSizeHotKeyMonitor.Action.increase.rawValue
+            ),
+            FontSizeHotKeyMonitor.Shortcut(
+                action: .increase,
+                keyCode: UInt32(kVK_ANSI_Equal),
+                modifiers: UInt32(cmdKey),
+                identifier: FontSizeHotKeyMonitor.Action.increase.rawValue
+            ),
+        ])
+
+        var actions: [FontSizeHotKeyMonitor.Action] = []
+        let monitor = FontSizeHotKeyMonitor { actions.append($0) }
+        XCTAssertFalse(monitor.route(signature: 0, identifier: 1))
+        XCTAssertFalse(monitor.route(signature: FontSizeHotKeyMonitor.signature, identifier: 99))
+        XCTAssertTrue(monitor.route(
+            signature: FontSizeHotKeyMonitor.signature,
+            identifier: FontSizeHotKeyMonitor.Action.decrease.rawValue
+        ))
+        XCTAssertTrue(monitor.route(
+            signature: FontSizeHotKeyMonitor.signature,
+            identifier: FontSizeHotKeyMonitor.Action.increase.rawValue
+        ))
+        XCTAssertEqual(actions, [.decrease, .increase])
+    }
+
+    @MainActor
+    func testWindowKeyboardMonitorFiltersZoomShortcutForPreviewWindow() throws {
+        let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        let window = NSWindow(
+            contentRect: view.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+
+        XCTAssertFalse(view.isKeyboardMonitorInstalled)
+        window.contentView = view
+        defer { window.contentView = NSView() }
+        XCTAssertTrue(view.isKeyboardMonitorInstalled)
+        XCTAssertTrue(view.isSystemHotKeyMonitorRunning)
+
+        let commandPlus = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.command, .shift],
+            timestamp: 0,
+            windowNumber: window.windowNumber,
+            context: nil,
+            characters: "+",
+            charactersIgnoringModifiers: "=",
+            isARepeat: false,
+            keyCode: 24
+        ))
+        XCTAssertNil(view.filterMonitoredKeyDown(commandPlus))
+        XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize + 1)
+
+        let unrelatedCommand = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.command],
+            timestamp: 0,
+            windowNumber: window.windowNumber,
+            context: nil,
+            characters: "x",
+            charactersIgnoringModifiers: "x",
+            isARepeat: false,
+            keyCode: 7
+        ))
+        XCTAssertNotNil(view.filterMonitoredKeyDown(unrelatedCommand))
+        XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize + 1)
+
+        window.contentView = NSView()
+        XCTAssertFalse(view.isKeyboardMonitorInstalled)
+        XCTAssertFalse(view.isSystemHotKeyMonitorRunning)
+    }
+
     func testBundleRegistrationDoesNotClaimMarkdown() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -165,6 +409,15 @@ final class LanguageAndDecoderTests: XCTestCase {
         return component(converted.redComponent) << 16 |
             component(converted.greenComponent) << 8 |
             component(converted.blueComponent)
+    }
+
+    @MainActor
+    private func descendants<T: NSView>(of type: T.Type, in root: NSView) -> [T] {
+        root.subviews.flatMap { child -> [T] in
+            var matches = (child as? T).map { [$0] } ?? []
+            matches.append(contentsOf: descendants(of: type, in: child))
+            return matches
+        }
     }
 
     func testDecoderHandlesUnicodeAndBOMs() throws {
