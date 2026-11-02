@@ -3,13 +3,19 @@ import Foundation
 public struct YAMLHighlighter: SyntaxHighlighter {
     public init() {}
 
-    public func highlight(_ text: String, state: LexerState = .normal) -> HighlightResult {
+    public func highlight(
+        _ text: String,
+        state: LexerState,
+        cancellation: HighlightCancellation
+    ) -> HighlightResult {
         let units = Array(text.utf16)
         var spans: [TokenSpan] = []
         var line = 0
         var carriedState = state
         while line < units.count {
-            let end = lineEnd(in: units, from: line)
+            if cancellation.shouldStop(atUTF16Offset: line) { break }
+            let end = lineEnd(in: units, from: line, cancellation: cancellation)
+            if cancellation.isCancelled { break }
             var content = line
             var indent = 0
             while content < end, isHorizontalSpace(units[content]) { indent += units[content] == 9 ? 4 : 1; content += 1 }
@@ -31,7 +37,13 @@ public struct YAMLHighlighter: SyntaxHighlighter {
                     spans.append(TokenSpan(i, end - i, .comment)); break
                 } else if units[i] == 34 || units[i] == 39 {
                     let quote = units[i]
-                    let close = min(end, scanQuoted(units, from: i, quote: quote, escapes: quote == 34))
+                    let close = min(end, scanQuoted(
+                        units,
+                        from: i,
+                        quote: quote,
+                        escapes: quote == 34,
+                        cancellation: cancellation
+                    ))
                     var look = close
                     while look < end, isHorizontalSpace(units[look]) { look += 1 }
                     spans.append(TokenSpan(i, close - i, look < end && units[look] == 58 ? .property : .string)); i = close

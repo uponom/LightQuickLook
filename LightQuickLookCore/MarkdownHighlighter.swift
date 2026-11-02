@@ -3,13 +3,19 @@ import Foundation
 public struct MarkdownHighlighter: SyntaxHighlighter {
     public init() {}
 
-    public func highlight(_ text: String, state: LexerState = .normal) -> HighlightResult {
+    public func highlight(
+        _ text: String,
+        state: LexerState,
+        cancellation: HighlightCancellation
+    ) -> HighlightResult {
         let u = Array(text.utf16)
         var spans: [TokenSpan] = []
         var line = 0
         var carried = state
         while line < u.count {
-            let end = lineEnd(in: u, from: line)
+            if cancellation.shouldStop(atUTF16Offset: line) { break }
+            let end = lineEnd(in: u, from: line, cancellation: cancellation)
+            if cancellation.isCancelled { break }
             var content = line
             while content < end, isHorizontalSpace(u[content]) { content += 1 }
             if case let .markdownFence(marker, count) = carried {
@@ -37,6 +43,7 @@ public struct MarkdownHighlighter: SyntaxHighlighter {
                 }
                 var i = content
                 while i < end {
+                    if cancellation.shouldStop(atUTF16Offset: i) { break }
                     if u[i] == 96 {
                         let start = i; i += 1; while i < end, u[i] != 96 { i += 1 }; if i < end { i += 1 }
                         spans.append(TokenSpan(start, i - start, .code))

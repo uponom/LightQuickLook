@@ -49,10 +49,30 @@ public enum TextDecoder {
 }
 
 public enum PreviewPolicy {
-    public static let initialChunkBytes = 256 * 1_024
+    public static let initialHighlightUTF16Length = 32 * 1_024
+    public static let highlightChunkUTF16Length = 128 * 1_024
     public static let processingChunkBytes = 256 * 1_024
-    public static let eagerFileBytes = 2 * 1_024 * 1_024
     public static let maximumPreviewBytes = 8 * 1_024 * 1_024
+    public static let longLineWrapUTF16Length = 16 * 1_024
+}
+
+public enum TextLayoutPolicy {
+    public static func requiresSoftWrap(
+        _ text: String,
+        threshold: Int = PreviewPolicy.longLineWrapUTF16Length
+    ) -> Bool {
+        let safeThreshold = max(1, threshold)
+        var currentLineLength = 0
+        for unit in text.utf16 {
+            if unit == 10 || unit == 13 {
+                currentLineLength = 0
+            } else {
+                currentLineLength += 1
+                if currentLineLength > safeThreshold { return true }
+            }
+        }
+        return false
+    }
 }
 
 public struct PreviewDocument: Sendable {
@@ -61,6 +81,7 @@ public struct PreviewDocument: Sendable {
     public let fileSize: UInt64
     public let isTruncated: Bool
     public let encoding: TextEncoding
+    public let requiresSoftWrap: Bool
 }
 
 public enum PreviewFileLoader {
@@ -104,7 +125,8 @@ public enum PreviewFileLoader {
             language: LanguageDetector.detect(url: url, prefix: decoded.text),
             fileSize: size,
             isTruncated: size > UInt64(PreviewPolicy.maximumPreviewBytes),
-            encoding: decoded.encoding
+            encoding: decoded.encoding,
+            requiresSoftWrap: TextLayoutPolicy.requiresSoftWrap(decoded.text)
         )
     }
 }

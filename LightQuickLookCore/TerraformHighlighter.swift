@@ -4,34 +4,53 @@ public struct TerraformHighlighter: SyntaxHighlighter {
     private static let keywords: Set<String> = ["terraform", "provider", "resource", "data", "variable", "locals", "module", "output", "moved", "import", "check"]
     public init() {}
 
-    public func highlight(_ text: String, state: LexerState = .normal) -> HighlightResult {
+    public func highlight(
+        _ text: String,
+        state: LexerState,
+        cancellation: HighlightCancellation
+    ) -> HighlightResult {
         let u = Array(text.utf16)
         var spans: [TokenSpan] = [], i = 0
         var carried = state
         if case let .heredoc(delimiter, stripTabs, .terraform) = carried {
             let target = Array(delimiter.utf16)
             while i < u.count {
-                let start = i, end = lineEnd(in: u, from: i)
+                if cancellation.shouldStop(atUTF16Offset: i) { break }
+                let start = i, end = lineEnd(in: u, from: i, cancellation: cancellation)
+                if cancellation.isCancelled { break }
                 var compare = start; if stripTabs { while compare < end, isHorizontalSpace(u[compare]) { compare += 1 } }
                 spans.append(TokenSpan(start, end - start, .string)); i = nextLine(in: u, after: end)
                 if slice(u, from: compare, to: end, equals: target) { carried = .normal; break }
             }
         }
         while i < u.count {
+            if cancellation.shouldStop(atUTF16Offset: i) { break }
             let start = i
             if carried == .blockComment {
-                while i < u.count, !hasPrefix(u, at: i, "*/") { i += 1 }
+                while i < u.count, !hasPrefix(u, at: i, "*/") {
+                    if cancellation.shouldStop(atUTF16Offset: i) { break }
+                    i += 1
+                }
+                if cancellation.isCancelled { break }
                 if i < u.count { i += 2; carried = .normal }
                 spans.append(TokenSpan(start, i - start, .comment))
             } else if hasPrefix(u, at: i, "/*") {
                 i += 2; carried = .blockComment
-                while i < u.count, !hasPrefix(u, at: i, "*/") { i += 1 }
+                while i < u.count, !hasPrefix(u, at: i, "*/") {
+                    if cancellation.shouldStop(atUTF16Offset: i) { break }
+                    i += 1
+                }
+                if cancellation.isCancelled { break }
                 if i < u.count { i += 2; carried = .normal }
                 spans.append(TokenSpan(start, i - start, .comment))
             } else if u[i] == 35 || hasPrefix(u, at: i, "//") {
-                i = lineEnd(in: u, from: i); spans.append(TokenSpan(start, i - start, .comment))
+                i = lineEnd(in: u, from: i, cancellation: cancellation)
+                if cancellation.isCancelled { break }
+                spans.append(TokenSpan(start, i - start, .comment))
             } else if u[i] == 34 {
-                i = scanQuoted(u, from: i, quote: 34); spans.append(TokenSpan(start, i - start, .string))
+                i = scanQuoted(u, from: i, quote: 34, cancellation: cancellation)
+                if cancellation.isCancelled { break }
+                spans.append(TokenSpan(start, i - start, .string))
             } else if u[i] == 60, i + 1 < u.count, u[i + 1] == 60 {
                 i += 2; var strip = false
                 if i < u.count, u[i] == 45 { strip = true; i += 1 }
@@ -40,10 +59,14 @@ public struct TerraformHighlighter: SyntaxHighlighter {
                 let delimiter = ascii(u[ds..<i]); spans.append(TokenSpan(start, i - start, .directive))
                 if !delimiter.isEmpty {
                     carried = .heredoc(delimiter: delimiter, stripTabs: strip, language: .terraform)
-                    i = nextLine(in: u, after: lineEnd(in: u, from: i))
+                    let directiveEnd = lineEnd(in: u, from: i, cancellation: cancellation)
+                    if cancellation.isCancelled { break }
+                    i = nextLine(in: u, after: directiveEnd)
                     let target = Array(delimiter.utf16)
                     while i < u.count {
-                        let bodyStart = i, bodyEnd = lineEnd(in: u, from: i)
+                        if cancellation.shouldStop(atUTF16Offset: i) { break }
+                        let bodyStart = i, bodyEnd = lineEnd(in: u, from: i, cancellation: cancellation)
+                        if cancellation.isCancelled { break }
                         var compare = bodyStart
                         if strip { while compare < bodyEnd, isHorizontalSpace(u[compare]) { compare += 1 } }
                         spans.append(TokenSpan(bodyStart, bodyEnd - bodyStart, .string))

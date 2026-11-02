@@ -2,6 +2,34 @@ import Foundation
 import XCTest
 @testable import LightQuickLookCore
 
+private final class CancellationProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var checks = 0
+
+    var checkCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return checks
+    }
+
+    func cancelAfterFirstCheck() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        checks += 1
+        return checks > 1
+    }
+}
+
+private actor HighlightBatchCollector {
+    private var batches: [HighlightedRangeBatch] = []
+
+    func append(_ batch: HighlightedRangeBatch) {
+        batches.append(batch)
+    }
+
+    func collected() -> [HighlightedRangeBatch] { batches }
+}
+
 final class HighlighterTests: XCTestCase {
     private func tokenTexts(_ source: String, _ result: HighlightResult, kind: TokenKind) -> [String] {
         let text = source as NSString
@@ -27,6 +55,20 @@ final class HighlighterTests: XCTestCase {
         XCTAssertTrue(tokenTexts(source, result, kind: .property).contains("\"ключ\""))
         XCTAssertEqual(tokenTexts(source, result, kind: .number), ["-12.5"])
         XCTAssertTrue(tokenTexts(source, result, kind: .literal).contains("true"))
+    }
+
+    func testJSONLinesUsesJSONDetectionAndHighlighting() {
+        let source = "{\"name\":\"alpha\",\"enabled\":true}\n{\"name\":\"beta\",\"enabled\":false}\n"
+        let language = LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/sample.jsonl"))
+        let result = HighlighterFactory.make(for: language).highlight(source, state: .normal)
+
+        XCTAssertEqual(language, .json)
+        assertValidRanges(source, result)
+        XCTAssertEqual(tokenTexts(source, result, kind: .property), [
+            "\"name\"", "\"enabled\"", "\"name\"", "\"enabled\"",
+        ])
+        XCTAssertEqual(tokenTexts(source, result, kind: .literal), ["true", "false"])
+        XCTAssertEqual(result.state, .normal)
     }
 
     func testJSONCarriesAStringAcrossProcessingChunks() {
@@ -132,6 +174,90 @@ final class HighlighterTests: XCTestCase {
             let highlighter = HighlighterFactory.make(for: language)
             for source in samples { assertValidRanges(source, highlighter.highlight(source, state: .normal)) }
         }
+    }
+
+    func testPowerShellUnclosedTypeBracketsStayLinearEnoughForPreviewing() {
+        let source = String(repeating: "[A", count: 50_000)
+        let start = ContinuousClock.now
+        let result = PowerShellHighlighter().highlight(source, state: .normal)
+        let elapsed = start.duration(to: .now)
+
+        assertValidRanges(source, result)
+        XCTAssertLessThan(elapsed, .seconds(2))
+    }
+
+    func testLexerCancellationStopsInsideLargeToken() {
+        let source = "\"" + String(repeating: "\\\\", count: 500_000)
+        let probe = CancellationProbe()
+        let cancellation = HighlightCancellation { probe.cancelAfterFirstCheck() }
+        let result = JSONHighlighter().highlight(
+            source,
+            state: .normal,
+            cancellation: cancellation
+        )
+
+        XCTAssertGreaterThan(probe.checkCount, 1)
+        XCTAssertLessThan(
+            result.spans.first?.range.length ?? 0,
+            (source as NSString).length
+        )
+    }
+
+    func testIncrementalPipelineUsesSmallFirstBatchAndGlobalRanges() throws {
+        let line = #"{"name":"value","enabled":true}"# + "\n"
+        let source = String(repeating: line, count: 10_000)
+        var batches: [HighlightedRangeBatch] = []
+        try HighlightPipeline.enumerateBatches(text: source, language: .json) {
+            batches.append($0)
+        }
+
+        XCTAssertGreaterThan(batches.count, 1)
+        XCTAssertLessThanOrEqual(batches[0].range.length, PreviewPolicy.initialHighlightUTF16Length)
+        for batch in batches.dropFirst() {
+            XCTAssertLessThanOrEqual(batch.range.length, PreviewPolicy.highlightChunkUTF16Length)
+        }
+        XCTAssertEqual(batches.first?.range.location, 0)
+        XCTAssertEqual(NSMaxRange(try XCTUnwrap(batches.last?.range)), (source as NSString).length)
+        for batch in batches {
+            for span in batch.spans {
+                XCTAssertGreaterThanOrEqual(span.range.location, batch.range.location)
+                XCTAssertLessThanOrEqual(NSMaxRange(span.range), NSMaxRange(batch.range))
+            }
+        }
+    }
+
+    func testInitialBatchContinuesWithoutGapsOrDuplicateWork() async throws {
+        let source = #"{"message":""# + String(repeating: "x", count: 40_000) +
+            #"","enabled":true,"count":12345}"#
+        let initial = try XCTUnwrap(try HighlightPipeline.initialBatch(text: source, language: .json))
+        XCTAssertEqual(initial.batch.range.location, 0)
+        XCTAssertEqual(initial.batch.range.length, PreviewPolicy.initialHighlightUTF16Length)
+        XCTAssertEqual(initial.stateAfter, .doubleQuotedString)
+
+        let collector = HighlightBatchCollector()
+        try await HighlightPipeline.enumerateBatchesAsync(
+            text: source,
+            language: .json,
+            startingAtUTF16Location: NSMaxRange(initial.batch.range),
+            initialState: initial.stateAfter,
+            initialTargetUTF16Length: PreviewPolicy.highlightChunkUTF16Length
+        ) { batch in
+            await collector.append(batch)
+        }
+        let remaining = await collector.collected()
+        let batches = [initial.batch] + remaining
+
+        var expectedLocation = 0
+        for batch in batches {
+            XCTAssertEqual(batch.range.location, expectedLocation)
+            expectedLocation = NSMaxRange(batch.range)
+        }
+        XCTAssertEqual(expectedLocation, (source as NSString).length)
+
+        let enabledRange = (source as NSString).range(of: #""enabled""#)
+        XCTAssertTrue(batches.flatMap(\.spans).contains {
+            $0.kind == .property && $0.range == enabledRange
+        })
     }
 
     func testChunkerMakesProgressForNonPositiveTargets() {

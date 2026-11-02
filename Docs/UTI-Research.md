@@ -16,6 +16,7 @@ Results reflect this machine's current Launch Services database and installed ap
 |---|---|---|
 | `.yaml`, `.yml` | `public.yaml` | stable Apple-declared type |
 | `.json` | `public.json` | stable Apple-declared type |
+| `.jsonl` | `dyn.ah62d4rv4ge80y65tr30a` | dynamic and unsuitable for registration |
 | `.md`, `.markdown` | `net.daringfireball.markdown` | established imported type; conforms to `public.plain-text` here |
 | `.sh` | `public.shell-script` | stable Apple type, but broad within the script hierarchy |
 | `.bash` | `public.bash-script` | stable Apple type, conforms to `public.shell-script` |
@@ -35,7 +36,8 @@ The host does not import or claim Markdown. `.md` and `.markdown` are intentiona
 The host exports the application-owned narrow types:
 
 - `io.github.uponom.lightquicklook.powershell-source` → `.ps1`, `.psm1`, `.psd1`, conforms to `public.source-code`;
-- `io.github.uponom.lightquicklook.hcl-source` → `.tf`, `.tfvars`, `.hcl`, conforms to `public.source-code`.
+- `io.github.uponom.lightquicklook.hcl-source` → `.tf`, `.tfvars`, `.hcl`, conforms to `public.source-code`;
+- `io.github.uponom.lightquicklook.json-lines` → `.jsonl`, conforms to `public.json` and reuses the JSON lexer.
 
 The preview extension registers exactly:
 
@@ -46,6 +48,7 @@ public.shell-script
 public.bash-script
 io.github.uponom.lightquicklook.powershell-source
 io.github.uponom.lightquicklook.hcl-source
+io.github.uponom.lightquicklook.json-lines
 ```
 
 It does not register `public.data`, `public.item`, `public.content`, `public.text`, `public.plain-text`, or `public.source-code`.
@@ -69,6 +72,7 @@ The final Release bundle was registered from `build/Release`. PlugInKit reported
 
 - `.yaml` → `public.yaml`;
 - `.json` → `public.json`;
+- `.jsonl` → `io.github.uponom.lightquicklook.json-lines`;
 - `.sh` → `public.shell-script`;
 - `.ps1` → `io.github.uponom.lightquicklook.powershell-source`;
 - `.tf` → `io.github.uponom.lightquicklook.hcl-source`.

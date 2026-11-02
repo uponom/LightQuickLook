@@ -4,7 +4,11 @@ public struct BashHighlighter: SyntaxHighlighter {
     private static let keywords: Set<String> = ["if", "then", "elif", "else", "fi", "for", "while", "until", "do", "done", "case", "esac", "in", "function", "select", "time", "coproc"]
     public init() {}
 
-    public func highlight(_ text: String, state: LexerState = .normal) -> HighlightResult {
+    public func highlight(
+        _ text: String,
+        state: LexerState,
+        cancellation: HighlightCancellation
+    ) -> HighlightResult {
         let u = Array(text.utf16)
         var spans: [TokenSpan] = []
         var i = 0
@@ -12,7 +16,9 @@ public struct BashHighlighter: SyntaxHighlighter {
         if case let .heredoc(delimiter, stripTabs, .bash) = carried {
             let target = Array(delimiter.utf16)
             while i < u.count {
-                let start = i, end = lineEnd(in: u, from: i)
+                if cancellation.shouldStop(atUTF16Offset: i) { break }
+                let start = i, end = lineEnd(in: u, from: i, cancellation: cancellation)
+                if cancellation.isCancelled { break }
                 var compare = start
                 if stripTabs { while compare < end, u[compare] == 9 { compare += 1 } }
                 spans.append(TokenSpan(start, end - start, .string))
@@ -21,14 +27,26 @@ public struct BashHighlighter: SyntaxHighlighter {
             }
         }
         while i < u.count {
+            if cancellation.shouldStop(atUTF16Offset: i) { break }
             let start = i
             if i == 0, hasPrefix(u, at: i, "#!") {
-                i = lineEnd(in: u, from: i); spans.append(TokenSpan(start, i - start, .directive))
+                i = lineEnd(in: u, from: i, cancellation: cancellation)
+                if cancellation.isCancelled { break }
+                spans.append(TokenSpan(start, i - start, .directive))
             } else if u[i] == 35 {
-                i = lineEnd(in: u, from: i); spans.append(TokenSpan(start, i - start, .comment))
+                i = lineEnd(in: u, from: i, cancellation: cancellation)
+                if cancellation.isCancelled { break }
+                spans.append(TokenSpan(start, i - start, .comment))
             } else if u[i] == 39 || u[i] == 34 || (u[i] == 36 && i + 1 < u.count && u[i + 1] == 39) {
                 let quoteIndex = u[i] == 36 ? i + 1 : i, quote = u[quoteIndex]
-                i = scanQuoted(u, from: quoteIndex, quote: quote, escapes: quote != 39)
+                i = scanQuoted(
+                    u,
+                    from: quoteIndex,
+                    quote: quote,
+                    escapes: quote != 39,
+                    cancellation: cancellation
+                )
+                if cancellation.isCancelled { break }
                 spans.append(TokenSpan(start, i - start, .string))
             } else if u[i] == 36 {
                 i += 1
@@ -49,10 +67,14 @@ public struct BashHighlighter: SyntaxHighlighter {
                 spans.append(TokenSpan(start, i - start, .directive))
                 if !delimiter.isEmpty {
                     carried = .heredoc(delimiter: delimiter, stripTabs: stripTabs, language: .bash)
-                    i = nextLine(in: u, after: lineEnd(in: u, from: i))
+                    let directiveEnd = lineEnd(in: u, from: i, cancellation: cancellation)
+                    if cancellation.isCancelled { break }
+                    i = nextLine(in: u, after: directiveEnd)
                     let target = Array(delimiter.utf16)
                     while i < u.count {
-                        let bodyStart = i, bodyEnd = lineEnd(in: u, from: i)
+                        if cancellation.shouldStop(atUTF16Offset: i) { break }
+                        let bodyStart = i, bodyEnd = lineEnd(in: u, from: i, cancellation: cancellation)
+                        if cancellation.isCancelled { break }
                         var compare = bodyStart
                         if stripTabs { while compare < bodyEnd, u[compare] == 9 { compare += 1 } }
                         spans.append(TokenSpan(bodyStart, bodyEnd - bodyStart, .string))

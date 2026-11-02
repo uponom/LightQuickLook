@@ -24,9 +24,16 @@ func ascii(_ units: ArraySlice<UInt16>) -> String {
     String(decoding: units, as: UTF16.self)
 }
 
-func lineEnd(in units: [UInt16], from start: Int) -> Int {
+func lineEnd(
+    in units: [UInt16],
+    from start: Int,
+    cancellation: HighlightCancellation = .never
+) -> Int {
     var i = start
-    while i < units.count, units[i] != 10, units[i] != 13 { i += 1 }
+    while i < units.count, units[i] != 10, units[i] != 13 {
+        if cancellation.shouldStop(atUTF16Offset: i) { return i }
+        i += 1
+    }
     return i
 }
 
@@ -37,9 +44,16 @@ func nextLine(in units: [UInt16], after end: Int) -> Int {
     return i
 }
 
-func scanQuoted(_ units: [UInt16], from start: Int, quote: UInt16, escapes: Bool = true) -> Int {
+func scanQuoted(
+    _ units: [UInt16],
+    from start: Int,
+    quote: UInt16,
+    escapes: Bool = true,
+    cancellation: HighlightCancellation = .never
+) -> Int {
     var i = start + 1
     while i < units.count {
+        if cancellation.shouldStop(atUTF16Offset: i) { return i }
         if escapes, units[i] == 92 { i = min(units.count, i + 2); continue }
         if units[i] == quote { return i + 1 }
         i += 1

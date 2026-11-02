@@ -5,7 +5,7 @@ LightQuickLook is a minimal native macOS Quick Look viewer for source and config
 ## Supported formats
 
 - YAML: `.yaml`, `.yml`
-- JSON: `.json`
+- JSON and JSON Lines: `.json`, `.jsonl`
 - PowerShell: `.ps1`, `.psm1`, `.psd1`
 - Bash/shell: `.sh`, `.bash`
 - Terraform/HCL: `.tf`, `.tfvars`, `.hcl`
@@ -61,7 +61,7 @@ Shipping dependencies are Apple system frameworks only. There are no Swift packa
 
 The preview follows the system appearance using palettes based on VS Code Dark 2026 and Light 2026, including relevant inherited Dark+/Light+ scope precedence. Operators and brackets deliberately use the full editor foreground color for reliable contrast.
 
-Font size can be changed for the current preview with the `−` and `+` controls above the source, with `⌘−` and `⌘+`, or by scrolling while holding Control. The supported range is 8–32 pt. Scaling uses native `NSScrollView` magnification, so changing the size does not rebuild the highlighted text even for large previews.
+Font size can be changed for the current preview with the `−` and `+` controls above the source, with `⌘−` and `⌘+`, or by scrolling while holding Control. The supported range is 8–32 pt. Scaling updates TextKit 2 font attributes while preserving the existing syntax-token data.
 
 See [Architecture](Docs/ARCHITECTURE.md), [Theming](Docs/THEMING.md), [UTI research](Docs/UTI-Research.md), [Security](Docs/SECURITY.md), the [2026-08-11 security audit](Docs/SECURITY-AUDIT.md), and [Performance](Docs/PERFORMANCE.md).
 
@@ -114,7 +114,7 @@ Scripts/diagnose-quicklook.sh /Applications/LightQuickLook.app
 - If previews do not appear, confirm the extension is enabled, move/relaunch the app, and inspect `pluginkit -mAvvv -p com.apple.quicklook.preview`.
 - macOS tracks extension-bearing app bundles by both identity and path. Building the same app into many `DerivedData` or temporary product directories can therefore create duplicate entries in System Settings. Keep one installed/registered copy, remove obsolete build products, and reopen System Settings after cleanup.
 - Finder handler precedence can change when other preview applications are installed. Restart Finder or log out/in after changing competing extensions.
-- PowerShell and HCL use application-owned exported UTIs declared by the host because macOS otherwise assigns machine-specific `dyn.*` types.
+- PowerShell, HCL, and JSON Lines use application-owned exported UTIs declared by the host because macOS otherwise assigns machine-specific `dyn.*` types.
 - Supporting `.sh` requires `public.shell-script`. This may also make LightQuickLook a candidate for Ruby, Perl, PHP, and zsh files; those unsupported extensions safely fall back to plain text. Details and evidence are in `Docs/UTI-Research.md`.
 
 ## Current limitations

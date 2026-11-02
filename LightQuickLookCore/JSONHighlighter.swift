@@ -3,7 +3,11 @@ import Foundation
 public struct JSONHighlighter: SyntaxHighlighter {
     public init() {}
 
-    public func highlight(_ text: String, state: LexerState = .normal) -> HighlightResult {
+    public func highlight(
+        _ text: String,
+        state: LexerState,
+        cancellation: HighlightCancellation
+    ) -> HighlightResult {
         var s = UTF16Scanner(text)
         var spans: [TokenSpan] = []
         var carried = state
@@ -11,6 +15,9 @@ public struct JSONHighlighter: SyntaxHighlighter {
             let start = s.index
             var escaped = false
             while !s.isAtEnd {
+                if cancellation.shouldStop(atUTF16Offset: s.index) {
+                    return HighlightResult(spans: validated(spans, length: s.units.count), state: carried)
+                }
                 let character = s.current
                 s.advance()
                 if character == 34, !escaped { carried = .normal; break }
@@ -19,10 +26,11 @@ public struct JSONHighlighter: SyntaxHighlighter {
             spans.append(TokenSpan(start, s.index - start, .string))
         }
         while !s.isAtEnd {
+            if cancellation.shouldStop(atUTF16Offset: s.index) { break }
             let start = s.index
             switch s.current {
             case 34:
-                let end = scanQuoted(s.units, from: start, quote: 34)
+                let end = scanQuoted(s.units, from: start, quote: 34, cancellation: cancellation)
                 var look = end
                 while look < s.units.count, isSpace(s.units[look]) { look += 1 }
                 spans.append(TokenSpan(start, end - start, look < s.units.count && s.units[look] == 58 ? .property : .string))

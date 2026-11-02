@@ -60,45 +60,116 @@ final class LanguageAndDecoderTests: XCTestCase {
     }
 
     @MainActor
+    func testThemeButtonsSwitchAndPersistTheSelectedTheme() throws {
+        let suiteName = "io.github.uponom.LightQuickLook.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let view = CodePreviewView(
+            frame: NSRect(x: 0, y: 0, width: 800, height: 500),
+            userDefaults: defaults
+        )
+        view.appearance = NSAppearance(named: .darkAqua)
+        view.viewDidChangeEffectiveAppearance()
+
+        let buttons = descendants(of: NSButton.self, in: view)
+        let automatic = try XCTUnwrap(buttons.first { $0.identifier?.rawValue == "automaticTheme" })
+        let light = try XCTUnwrap(buttons.first { $0.identifier?.rawValue == "lightTheme" })
+        let dark = try XCTUnwrap(buttons.first { $0.identifier?.rawValue == "darkTheme" })
+        let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
+        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
+
+        func isBold(_ button: NSButton) -> Bool {
+            button.font?.fontDescriptor.symbolicTraits.contains(.bold) == true
+        }
+
+        XCTAssertEqual(view.themePreference, .automatic)
+        XCTAssertEqual(automatic.state, .on)
+        XCTAssertTrue(isBold(automatic))
+        XCTAssertFalse(isBold(light))
+        XCTAssertFalse(isBold(dark))
+        XCTAssertEqual(nsColorHex(textView.backgroundColor), VSCode2026Theme.dark.background.hex)
+
+        light.performClick(nil)
+        XCTAssertEqual(view.themePreference, .light)
+        XCTAssertEqual(view.appearance?.name, .aqua)
+        XCTAssertEqual(light.state, .on)
+        XCTAssertEqual(automatic.state, .off)
+        XCTAssertEqual(dark.state, .off)
+        XCTAssertTrue(isBold(light))
+        XCTAssertFalse(isBold(automatic))
+        XCTAssertFalse(isBold(dark))
+        XCTAssertEqual(nsColorHex(textView.backgroundColor), VSCode2026Theme.light.background.hex)
+
+        dark.performClick(nil)
+        XCTAssertEqual(view.appearance?.name, .darkAqua)
+        XCTAssertTrue(isBold(dark))
+        XCTAssertFalse(isBold(automatic))
+        XCTAssertFalse(isBold(light))
+        XCTAssertEqual(defaults.string(forKey: CodePreviewView.themePreferenceDefaultsKey), "dark")
+        XCTAssertEqual(nsColorHex(textView.backgroundColor), VSCode2026Theme.dark.background.hex)
+
+        let restoredView = CodePreviewView(
+            frame: NSRect(x: 0, y: 0, width: 800, height: 500),
+            userDefaults: defaults
+        )
+        XCTAssertEqual(restoredView.themePreference, .dark)
+        let restoredDark = try XCTUnwrap(
+            descendants(of: NSButton.self, in: restoredView).first {
+                $0.identifier?.rawValue == "darkTheme"
+            }
+        )
+        XCTAssertEqual(restoredDark.state, .on)
+        XCTAssertTrue(isBold(restoredDark))
+
+        automatic.performClick(nil)
+        XCTAssertNil(view.appearance)
+        XCTAssertTrue(isBold(automatic))
+        XCTAssertFalse(isBold(light))
+        XCTAssertFalse(isBold(dark))
+        XCTAssertEqual(defaults.string(forKey: CodePreviewView.themePreferenceDefaultsKey), "automatic")
+    }
+
+    @MainActor
     func testCodePreviewViewUsesReadableHCLPunctuationAndRecolorsLive() throws {
         let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
-        view.appearance = NSAppearance(named: .darkAqua)
+        view.setThemePreference(.dark, persist: false)
         let source = "resource \"example\" \"test\" {\n  enabled = true\n}\n"
         let highlighted = TerraformHighlighter().highlight(source, state: .normal)
         view.replace(with: HighlightedChunk(text: source, spans: highlighted.spans))
 
         let scrollView = try XCTUnwrap(view.subviews.compactMap { $0 as? NSScrollView }.first)
         let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
-        let storage = try XCTUnwrap(textView.textStorage)
         let text = source as NSString
         let punctuationOffsets = ["{", "=", "}"].map { text.range(of: $0).location }
 
         XCTAssertEqual(nsColorHex(textView.backgroundColor), VSCode2026Theme.dark.background.hex)
         for offset in punctuationOffsets {
-            let color = try XCTUnwrap(storage.attribute(.foregroundColor, at: offset, effectiveRange: nil) as? NSColor)
-            XCTAssertEqual(nsColorHex(color), VSCode2026Theme.dark.foreground.hex)
+            XCTAssertEqual(
+                nsColorHex(view.foregroundColor(atUTF16Offset: offset)),
+                VSCode2026Theme.dark.foreground.hex
+            )
         }
 
-        view.appearance = NSAppearance(named: .aqua)
-        view.viewDidChangeEffectiveAppearance()
+        view.setThemePreference(.light, persist: false)
         XCTAssertEqual(nsColorHex(textView.backgroundColor), VSCode2026Theme.light.background.hex)
         for offset in punctuationOffsets {
-            let color = try XCTUnwrap(storage.attribute(.foregroundColor, at: offset, effectiveRange: nil) as? NSColor)
-            XCTAssertEqual(nsColorHex(color), VSCode2026Theme.light.foreground.hex)
+            XCTAssertEqual(
+                nsColorHex(view.foregroundColor(atUTF16Offset: offset)),
+                VSCode2026Theme.light.foreground.hex
+            )
         }
     }
 
     @MainActor
     func testPowerShellPreviewMatchesVSCode2026ScopePrecedence() throws {
         let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
-        view.appearance = NSAppearance(named: .darkAqua)
+        view.setThemePreference(.dark, persist: false)
         let source = "param([string]$Name)\nWrite-Output \"Hello $Name\""
         let highlighted = PowerShellHighlighter().highlight(source, state: .normal)
         view.replace(with: HighlightedChunk(text: source, spans: highlighted.spans))
 
-        let scrollView = try XCTUnwrap(view.subviews.compactMap { $0 as? NSScrollView }.first)
-        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
-        let storage = try XCTUnwrap(textView.textStorage)
         let text = source as NSString
         let firstVariable = text.range(of: "$Name")
         let secondSearchRange = NSRange(location: NSMaxRange(firstVariable), length: text.length - NSMaxRange(firstVariable))
@@ -114,28 +185,145 @@ final class LanguageAndDecoderTests: XCTestCase {
 
         func assertColors(for theme: VSCode2026Theme, file: StaticString = #filePath, line: UInt = #line) throws {
             for (range, kind) in expectations {
-                let color = try XCTUnwrap(
-                    storage.attribute(.foregroundColor, at: range.location, effectiveRange: nil) as? NSColor,
-                    file: file,
-                    line: line
-                )
+                let color = view.foregroundColor(atUTF16Offset: range.location)
                 XCTAssertEqual(nsColorHex(color), theme.color(for: kind).hex, "Unexpected color for \(kind)", file: file, line: line)
             }
         }
 
         try assertColors(for: .dark)
-        view.appearance = NSAppearance(named: .aqua)
-        view.viewDidChangeEffectiveAppearance()
+        view.setThemePreference(.light, persist: false)
         try assertColors(for: .light)
     }
 
     @MainActor
-    func testFontSizeButtonsMagnifyRenderedTextWithoutRestylingAndClampAtBounds() throws {
+    func testHighlightingUsesLazyRenderingAttributesWithoutFragmentingStorage() async throws {
+        let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        view.setThemePreference(.light, persist: false)
+        let source = #"{"name":"value","enabled":true}"#
+        let result = JSONHighlighter().highlight(source, state: .normal)
+        view.displayPlainText(source, requiresSoftWrap: false)
+
+        let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
+        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
+        let storage = try XCTUnwrap(textView.textStorage)
+        let window = NSWindow(
+            contentRect: view.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = view
+        window.orderFront(nil)
+        defer {
+            window.orderOut(nil)
+            window.contentView = NSView()
+        }
+        window.layoutIfNeeded()
+        textView.textLayoutManager?.textViewportLayoutController.layoutViewport()
+        for _ in 0..<4 { await Task.yield() }
+        let refreshesBeforeTokens = view.viewportRenderingRefreshCount
+        XCTAssertNotNil(textView.textLayoutManager?.renderingAttributesValidator)
+        var runsBefore = 0
+        storage.enumerateAttributes(in: NSRange(location: 0, length: storage.length)) { _, _, _ in
+            runsBefore += 1
+        }
+        let before = storage.attributes(at: 1, effectiveRange: nil)
+        view.appendHighlightBatch(HighlightedRangeBatch(
+            range: NSRange(location: 0, length: storage.length),
+            spans: result.spans
+        ))
+        for _ in 0..<4 { await Task.yield() }
+        let after = storage.attributes(at: 1, effectiveRange: nil)
+        var runsAfter = 0
+        storage.enumerateAttributes(in: NSRange(location: 0, length: storage.length)) { _, _, _ in
+            runsAfter += 1
+        }
+
+        XCTAssertEqual(before[.foregroundColor] as? NSColor, after[.foregroundColor] as? NSColor)
+        XCTAssertEqual(runsBefore, 1)
+        XCTAssertEqual(runsAfter, 1)
+        XCTAssertEqual(view.highlightedTokenCount, result.spans.count)
+        XCTAssertGreaterThan(view.viewportRenderingRefreshCount, refreshesBeforeTokens)
+        XCTAssertEqual(
+            nsColorHex(view.foregroundColor(atUTF16Offset: 1)),
+            VSCode2026Theme.light.color(for: .property).hex
+        )
+    }
+
+    @MainActor
+    func testLargeSingleLineJSONRecolorsAlreadyLaidOutFirstViewport() async throws {
+        let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 1_000, height: 600))
+        view.setThemePreference(.dark, persist: false)
+        let repeatedEntry = #""visibleKey":"visibleValue","enabled":true,"count":12345,"#
+        let source = "{" + String(repeating: repeatedEntry, count: 12_000) + #""last":false}"#
+        XCTAssertGreaterThan(source.utf8.count, 600_000)
+        XCTAssertTrue(TextLayoutPolicy.requiresSoftWrap(source))
+        view.displayPlainText(source, requiresSoftWrap: true)
+
+        let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
+        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
+        let layoutManager = try XCTUnwrap(textView.textLayoutManager)
+        let window = NSWindow(
+            contentRect: view.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = view
+        window.orderFront(nil)
+        defer {
+            window.orderOut(nil)
+            window.contentView = NSView()
+        }
+        window.layoutIfNeeded()
+        layoutManager.textViewportLayoutController.layoutViewport()
+        for _ in 0..<4 { await Task.yield() }
+
+        let initial = try XCTUnwrap(try HighlightPipeline.initialBatch(text: source, language: .json))
+        view.appendHighlightBatch(initial.batch)
+        for _ in 0..<4 { await Task.yield() }
+        layoutManager.textViewportLayoutController.layoutViewport()
+        window.displayIfNeeded()
+
+        let bitmap = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        var syntaxColoredPixels = 0
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                if color.blueComponent - color.redComponent > 0.12,
+                   color.blueComponent - color.greenComponent > 0.05 {
+                    syntaxColoredPixels += 1
+                }
+            }
+        }
+        XCTAssertGreaterThan(syntaxColoredPixels, 20, "The laid-out first viewport should contain JSON token colors")
+    }
+
+    @MainActor
+    func testLongLinesEnableSoftWrapAndSuspiciousLayoutProtection() throws {
+        let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        let longLine = String(repeating: "x", count: PreviewPolicy.longLineWrapUTF16Length + 1)
+        view.displayPlainText(longLine, requiresSoftWrap: TextLayoutPolicy.requiresSoftWrap(longLine))
+
+        let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
+        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
+        XCTAssertTrue(view.isSoftWrappingEnabled)
+        XCTAssertFalse(scrollView.hasHorizontalScroller)
+        XCTAssertTrue(textView.textContainer?.widthTracksTextView == true)
+        XCTAssertTrue(textView.textLayoutManager?.limitsLayoutForSuspiciousContents == true)
+    }
+
+    @MainActor
+    func testFontSizeButtonsResizeRenderingAttributesWithoutRestylingAndClampAtBounds() throws {
         let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         let source = "# Heading\nplain\n"
         view.replace(with: HighlightedChunk(
             text: source,
-            spans: [TokenSpan(0, 9, .heading)]
+            spans: [
+                TokenSpan(0, 9, .heading),
+                TokenSpan(10, 5, .string),
+            ]
         ))
 
         let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
@@ -162,15 +350,19 @@ final class LanguageAndDecoderTests: XCTestCase {
 
         increaseButton.performClick(nil)
         XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize + 1)
+        XCTAssertEqual(view.renderedFontSize, CodePreviewView.defaultFontSize + 1)
         XCTAssertEqual(
-            scrollView.magnification,
-            (CodePreviewView.defaultFontSize + 1) / CodePreviewView.defaultFontSize,
-            accuracy: 0.0001
+            view.foregroundAndFont(atUTF16Offset: 10).font.pointSize,
+            CodePreviewView.defaultFontSize + 1
         )
+        XCTAssertEqual(scrollView.magnification, 1, accuracy: 0.0001)
         for offset in [0, storage.length - 1] {
             let font = try XCTUnwrap(storage.attribute(.font, at: offset, effectiveRange: nil) as? NSFont)
-            XCTAssertEqual(font.pointSize, CodePreviewView.defaultFontSize)
+            XCTAssertEqual(font.pointSize, CodePreviewView.defaultFontSize + 1)
         }
+        let headingFont = try XCTUnwrap(storage.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+        XCTAssertEqual(headingFont.pointSize, CodePreviewView.defaultFontSize + 1)
+        XCTAssertTrue(headingFont.fontDescriptor.symbolicTraits.contains(.bold))
 
         view.adjustFontSize(by: 100)
         XCTAssertEqual(view.fontSize, CodePreviewView.maximumFontSize)
@@ -200,16 +392,25 @@ final class LanguageAndDecoderTests: XCTestCase {
     }
 
     @MainActor
-    func testLargeDocumentZoomDoesNotMutateTextStorage() throws {
+    func testLargeDocumentZoomUpdatesFontWithoutChangingText() throws {
         let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
-        let line = #"{"key":"value","enabled":true,"count":12345}"# + "\n"
-        let source = String(repeating: line, count: 5_000)
-        XCTAssertGreaterThan(source.utf8.count, 200_000)
+        let line = #"{"key":"value","enabled":true,"count":12345,"description":"large preview"}"# + "\n"
+        let source = String(repeating: line, count: 7_000)
+        XCTAssertGreaterThan(source.utf8.count, 450_000)
         view.replace(with: HighlightedChunk(text: source, spans: []))
 
         let scrollView = try XCTUnwrap(descendants(of: NSScrollView.self, in: view).first)
         let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
         let storage = try XCTUnwrap(textView.textStorage)
+        let window = NSWindow(
+            contentRect: view.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = view
+        defer { window.contentView = NSView() }
+        window.layoutIfNeeded()
         let editNotificationCount = SendableCounter()
         let observer = NotificationCenter.default.addObserver(
             forName: NSTextStorage.didProcessEditingNotification,
@@ -220,12 +421,16 @@ final class LanguageAndDecoderTests: XCTestCase {
         }
         defer { NotificationCenter.default.removeObserver(observer) }
 
-        for _ in 0..<10 {
-            view.adjustFontSize(by: 1)
-            view.adjustFontSize(by: -1)
-        }
+        view.adjustFontSize(by: 1)
+        window.layoutIfNeeded()
+        let enlargedFont = try XCTUnwrap(storage.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+        XCTAssertEqual(enlargedFont.pointSize, CodePreviewView.defaultFontSize + 1)
 
-        XCTAssertEqual(editNotificationCount.value, 0)
+        view.adjustFontSize(by: -1)
+        window.layoutIfNeeded()
+
+        XCTAssertGreaterThan(editNotificationCount.value, 0)
+        XCTAssertLessThanOrEqual(editNotificationCount.value, 2)
         XCTAssertEqual(storage.string, source)
         XCTAssertEqual(scrollView.magnification, 1, accuracy: 0.0001)
     }
@@ -382,6 +587,13 @@ final class LanguageAndDecoderTests: XCTestCase {
 
         let host = try propertyList(at: "LightQuickLook/Info.plist")
         XCTAssertNil(host["UTImportedTypeDeclarations"])
+        let exportedTypes = try XCTUnwrap(host["UTExportedTypeDeclarations"] as? [[String: Any]])
+        let jsonLinesType = try XCTUnwrap(exportedTypes.first {
+            $0["UTTypeIdentifier"] as? String == "io.github.uponom.lightquicklook.json-lines"
+        })
+        XCTAssertEqual(jsonLinesType["UTTypeConformsTo"] as? [String], ["public.json"])
+        let jsonLinesTags = try XCTUnwrap(jsonLinesType["UTTypeTagSpecification"] as? [String: Any])
+        XCTAssertEqual(jsonLinesTags["public.filename-extension"] as? [String], ["jsonl"])
 
         let preview = try propertyList(at: "LightQuickLookPreview/Info.plist")
         let extensionDictionary = try XCTUnwrap(preview["NSExtension"] as? [String: Any])
@@ -395,15 +607,23 @@ final class LanguageAndDecoderTests: XCTestCase {
             "public.bash-script",
             "io.github.uponom.lightquicklook.powershell-source",
             "io.github.uponom.lightquicklook.hcl-source",
+            "io.github.uponom.lightquicklook.json-lines",
         ])
     }
 
     func testLanguageDetectionUsesExtensionsBeforeGuessing() {
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.yml")), .yaml)
+        XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.jsonl")), .json)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.psd1")), .powerShell)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.tfvars")), .terraform)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/tool"), prefix: "#!/usr/bin/env bash\n"), .bash)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/tool"), prefix: "plain"), .plain)
+    }
+
+    func testLongLinePolicyOnlyWrapsPathologicalLines() {
+        XCTAssertFalse(TextLayoutPolicy.requiresSoftWrap("short\nlines\n", threshold: 8))
+        XCTAssertTrue(TextLayoutPolicy.requiresSoftWrap("123456789", threshold: 8))
+        XCTAssertFalse(TextLayoutPolicy.requiresSoftWrap("1234\n1234", threshold: 8))
     }
 
     private func contrastRatio(_ foreground: ThemeRGBColor, _ background: ThemeRGBColor) -> Double {

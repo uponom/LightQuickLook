@@ -18,37 +18,101 @@ final class PreviewViewController: NSViewController, @preconcurrency QLPreviewin
         codeView.reset()
         previewTask = Task { [weak self] in
             var completionSent = false
+            let preparation = PreviewPerformance.signposter.beginInterval("PreparePreview")
+            var preparationEnded = false
+            defer {
+                if !preparationEnded {
+                    PreviewPerformance.signposter.endInterval("PreparePreview", preparation)
+                }
+            }
             do {
-                let document = try await Task.detached(priority: .userInitiated) {
-                    try Task.checkCancellation()
-                    return try PreviewFileLoader.load(url: url)
-                }.value
-                try Task.checkCancellation()
-                let textChunks = await Task.detached(priority: .userInitiated) {
-                    TextChunker.split(text: document.text)
-                }.value
+                let loading = PreviewPerformance.signposter.beginInterval("LoadAndDecode")
+                let document: PreviewDocument
+                let initialHighlight: HighlightedBatchProgress?
+                do {
+                    (document, initialHighlight) = try await Task.detached(priority: .userInitiated) {
+                        try Task.checkCancellation()
+                        let loadedDocument = try PreviewFileLoader.load(url: url)
+                        let firstBatch = try HighlightPipeline.initialBatch(
+                            text: loadedDocument.text,
+                            language: loadedDocument.language,
+                            cancellation: .currentTask
+                        )
+                        return (loadedDocument, firstBatch)
+                    }.value
+                } catch {
+                    PreviewPerformance.signposter.endInterval("LoadAndDecode", loading)
+                    throw error
+                }
+                PreviewPerformance.signposter.endInterval("LoadAndDecode", loading)
                 try Task.checkCancellation()
                 guard let self else { handler(CancellationError()); return }
-                let highlighter = HighlighterFactory.make(for: document.language)
-                var state = LexerState.normal
-                for (index, textChunk) in textChunks.enumerated() {
-                    try Task.checkCancellation()
-                    let inputState = state
-                    let result = await Task.detached(priority: .userInitiated) {
-                        highlighter.highlight(textChunk, state: inputState)
-                    }.value
-                    state = result.state
-                    let chunk = HighlightedChunk(text: textChunk, spans: result.spans)
-                    if index == 0 {
-                        self.codeView.replace(with: chunk)
-                        handler(nil)
-                        completionSent = true
-                    } else {
-                        self.codeView.append(chunk)
-                    }
-                    await Task.yield()
+
+                let sourceUTF16Length = (document.text as NSString).length
+                var displayText = document.text
+                var truncationBatch: HighlightedRangeBatch?
+                if document.isTruncated {
+                    let size = ByteCountFormatter.string(fromByteCount: Int64(document.fileSize), countStyle: .file)
+                    let notice = "\n\nPreview truncated for performance. File size: \(size).\n"
+                    let noticeRange = NSRange(location: sourceUTF16Length, length: (notice as NSString).length)
+                    displayText.append(notice)
+                    truncationBatch = HighlightedRangeBatch(
+                        range: noticeRange,
+                        spans: [TokenSpan(noticeRange.location, noticeRange.length, .comment)]
+                    )
                 }
-                if document.isTruncated { self.codeView.appendTruncationNotice(fileSize: document.fileSize) }
+
+                let installingText = PreviewPerformance.signposter.beginInterval("InstallPlainText")
+                self.codeView.displayPlainText(
+                    displayText,
+                    requiresSoftWrap: document.requiresSoftWrap
+                )
+                if let initialHighlight {
+                    self.codeView.appendHighlightBatch(initialHighlight.batch)
+                    PreviewPerformance.event("InitialHighlightInstalled")
+                }
+                if let truncationBatch { self.codeView.appendHighlightBatch(truncationBatch) }
+                PreviewPerformance.signposter.endInterval("InstallPlainText", installingText)
+                PreviewPerformance.event("PlainTextInstalled")
+
+                // Present the preview only after the small first highlight batch is
+                // installed. Remaining colors continue to arrive incrementally.
+                handler(nil)
+                completionSent = true
+                PreviewPerformance.event("CompletionHandlerCalled")
+                PreviewPerformance.signposter.endInterval("PreparePreview", preparation)
+                preparationEnded = true
+
+                let continuationLocation = initialHighlight.map { NSMaxRange($0.batch.range) } ?? 0
+                let continuationState = initialHighlight?.stateAfter ?? .normal
+                guard continuationLocation < sourceUTF16Length else { return }
+
+                let highlighting = PreviewPerformance.signposter.beginInterval("BackgroundHighlighting")
+                let worker = Task.detached(priority: .userInitiated) { [self] in
+                    try await HighlightPipeline.enumerateBatchesAsync(
+                        text: document.text,
+                        language: document.language,
+                        startingAtUTF16Location: continuationLocation,
+                        initialState: continuationState,
+                        initialTargetUTF16Length: PreviewPolicy.highlightChunkUTF16Length,
+                        cancellation: .currentTask
+                    ) { batch in
+                        try Task.checkCancellation()
+                        await self.appendHighlightBatch(batch)
+                    }
+                }
+                do {
+                    try await withTaskCancellationHandler {
+                        try await worker.value
+                    } onCancel: {
+                        worker.cancel()
+                    }
+                } catch {
+                    worker.cancel()
+                    PreviewPerformance.signposter.endInterval("BackgroundHighlighting", highlighting)
+                    throw error
+                }
+                PreviewPerformance.signposter.endInterval("BackgroundHighlighting", highlighting)
             } catch is CancellationError {
                 if !completionSent { handler(CancellationError()) }
             } catch TextDecodeError.binary {
@@ -58,10 +122,18 @@ final class PreviewViewController: NSViewController, @preconcurrency QLPreviewin
                 self?.codeView.reset(message: "This file uses an unsupported or malformed text encoding.")
                 if !completionSent { handler(nil) }
             } catch {
-                self?.codeView.reset(message: "The file could not be read.")
-                if !completionSent { handler(error) }
+                if !completionSent {
+                    self?.codeView.reset(message: "The file could not be read.")
+                    handler(error)
+                } else {
+                    PreviewPerformance.event("BackgroundHighlightingFailed")
+                }
             }
         }
+    }
+
+    private func appendHighlightBatch(_ batch: HighlightedRangeBatch) {
+        codeView.appendHighlightBatch(batch)
     }
 
     override func viewWillDisappear() {

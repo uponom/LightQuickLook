@@ -1,5 +1,5 @@
 import Foundation
-import AppKit
+import Darwin
 import LightQuickLookCore
 
 func elapsedMilliseconds(_ operation: () throws -> Void) rethrows -> Double {
@@ -15,28 +15,53 @@ func makeJSON(bytes: Int) -> Data {
     return Data(text.utf8)
 }
 
+func makeMinifiedJSON(bytes: Int) -> Data {
+    let item = #""key":"value","enabled":true,"count":12345"#
+    var text = "{"
+    while text.utf8.count + item.utf8.count + 2 <= bytes {
+        if text.count > 1 { text.append(",") }
+        text.append(item)
+    }
+    text.append("}")
+    return Data(text.utf8)
+}
+
 print("architecture=\(ProcessInfo.processInfo.machineArchitecture) os=\(ProcessInfo.processInfo.operatingSystemVersionString)")
-for size in [100 * 1_024, 256 * 1_024, 1 * 1_024 * 1_024, 8 * 1_024 * 1_024] {
-    let data = makeJSON(bytes: size)
+let cases: [(name: String, data: Data)] = [
+    ("formatted-100KiB", makeJSON(bytes: 100 * 1_024)),
+    ("formatted-256KiB", makeJSON(bytes: 256 * 1_024)),
+    ("formatted-1MiB", makeJSON(bytes: 1 * 1_024 * 1_024)),
+    ("formatted-8MiB", makeJSON(bytes: 8 * 1_024 * 1_024)),
+    ("minified-256KiB", makeMinifiedJSON(bytes: 256 * 1_024)),
+    ("minified-1MiB", makeMinifiedJSON(bytes: 1 * 1_024 * 1_024)),
+]
+
+for benchmarkCase in cases {
+    let data = benchmarkCase.data
     var decoded = ""
     let decode = try elapsedMilliseconds { decoded = try TextDecoder.decode(data).text }
     var tokenCount = 0
-    var chunks: [HighlightedChunk] = []
+    var batchCount = 0
+    var firstBatch = 0.0
+    let highlightStart = ContinuousClock.now
     let highlight = elapsedMilliseconds {
-        chunks = HighlightPipeline.process(text: decoded, language: .json)
-        tokenCount = chunks.reduce(0) { $0 + $1.spans.count }
-    }
-    var attributedLength = 0
-    let attributed = elapsedMilliseconds {
-        let output = NSMutableAttributedString()
-        for chunk in chunks {
-            let value = NSMutableAttributedString(string: chunk.text)
-            for span in chunk.spans { value.addAttribute(.foregroundColor, value: NSColor.labelColor, range: span.range) }
-            output.append(value)
+        try! HighlightPipeline.enumerateBatches(text: decoded, language: .json) { batch in
+            batchCount += 1
+            tokenCount += batch.spans.count
+            if batchCount == 1 {
+                firstBatch = Double(highlightStart.duration(to: .now).components.attoseconds) / 1_000_000_000_000_000
+            }
         }
-        attributedLength = output.length
     }
-    print("bytes=\(data.count) decode_ms=\(String(format: "%.3f", decode)) highlight_ms=\(String(format: "%.3f", highlight)) attributed_ms=\(String(format: "%.3f", attributed)) tokens=\(tokenCount) utf16=\(attributedLength)")
+    let wrapDetection = elapsedMilliseconds { _ = TextLayoutPolicy.requiresSoftWrap(decoded) }
+    print(
+        "case=\(benchmarkCase.name) bytes=\(data.count) " +
+        "decode_ms=\(String(format: "%.3f", decode)) " +
+        "first_batch_ms=\(String(format: "%.3f", firstBatch)) " +
+        "highlight_ms=\(String(format: "%.3f", highlight)) " +
+        "wrap_scan_ms=\(String(format: "%.3f", wrapDetection)) " +
+        "batches=\(batchCount) tokens=\(tokenCount) utf16=\((decoded as NSString).length)"
+    )
 }
 
 var usage = rusage()
