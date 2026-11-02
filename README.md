@@ -1,11 +1,15 @@
 # LightQuickLook
 
-LightQuickLook is a minimal native macOS Quick Look viewer for source and configuration files. Select a supported file in Finder and press Space to see selectable, copyable, scrollable source with lightweight syntax highlighting.
+LightQuickLook was created to provide a fast, lightweight, and dependable way to preview source and configuration files directly in macOS Finder. The project deliberately uses native macOS technologies and avoids third-party runtime dependencies, keeping the application small, responsive, and easy to maintain.
+
+Select a supported file in Finder and press Space to see selectable, copyable, scrollable source with lightweight syntax highlighting.
 
 ## Supported formats
 
 - YAML: `.yaml`, `.yml`
 - JSON and JSON Lines: `.json`, `.jsonl`
+- TOML: `.toml`
+- INI: `.ini`
 - PowerShell: `.ps1`, `.psm1`, `.psd1`
 - Bash/shell: `.sh`, `.bash`
 - Terraform/HCL: `.tf`, `.tfvars`, `.hcl`
@@ -24,8 +28,8 @@ Intel Macs (`x86_64`) and older macOS releases are not supported.
 Prebuilt versions are published on the [GitHub Releases](https://github.com/uponom/LightQuickLook/releases) page as:
 
 ```text
-LightQuickLook-1.0.0-unnotarized.dmg
-LightQuickLook-1.0.0-unnotarized-SHA256.txt
+LightQuickLook-1.1.0-unnotarized.dmg
+LightQuickLook-1.1.0-unnotarized-SHA256.txt
 ```
 
 LightQuickLook is free, open-source software and the project does not purchase an Apple Developer Program membership. The prebuilt application therefore has a consistent ad hoc code signature, but it is **not signed with an Apple Developer ID certificate and is not notarized by Apple**. macOS cannot verify the developer or confirm that Apple scanned the downloaded application, so Gatekeeper will warn or block the first launch.
@@ -34,13 +38,13 @@ The source for every release is available under its version tag. The accompanyin
 
 ### Install the prebuilt application
 
-1. Download `LightQuickLook-1.0.0-unnotarized.dmg` and its SHA-256 file from GitHub Releases.
+1. Download `LightQuickLook-1.1.0-unnotarized.dmg` and its SHA-256 file from GitHub Releases.
 2. Optionally verify the download from Terminal:
 
    ```sh
    cd ~/Downloads
-   shasum -a 256 LightQuickLook-1.0.0-unnotarized.dmg
-   cat LightQuickLook-1.0.0-unnotarized-SHA256.txt
+   shasum -a 256 LightQuickLook-1.1.0-unnotarized.dmg
+   cat LightQuickLook-1.1.0-unnotarized-SHA256.txt
    ```
 
    The two hashes must match.
@@ -114,7 +118,7 @@ Scripts/diagnose-quicklook.sh /Applications/LightQuickLook.app
 - If previews do not appear, confirm the extension is enabled, move/relaunch the app, and inspect `pluginkit -mAvvv -p com.apple.quicklook.preview`.
 - macOS tracks extension-bearing app bundles by both identity and path. Building the same app into many `DerivedData` or temporary product directories can therefore create duplicate entries in System Settings. Keep one installed/registered copy, remove obsolete build products, and reopen System Settings after cleanup.
 - Finder handler precedence can change when other preview applications are installed. Restart Finder or log out/in after changing competing extensions.
-- PowerShell, HCL, and JSON Lines use application-owned exported UTIs declared by the host because macOS otherwise assigns machine-specific `dyn.*` types.
+- PowerShell, HCL, and JSON Lines use application-owned exported UTIs declared by the host because macOS otherwise assigns machine-specific `dyn.*` types. TOML and INI use the system-declared `public.toml` and `com.microsoft.ini` types.
 - Supporting `.sh` requires `public.shell-script`. This may also make LightQuickLook a candidate for Ruby, Perl, PHP, and zsh files; those unsupported extensions safely fall back to plain text. Details and evidence are in `Docs/UTI-Research.md`.
 
 ## Current limitations
@@ -122,7 +126,7 @@ Scripts/diagnose-quicklook.sh /Applications/LightQuickLook.app
 - Lexical highlighting is intentionally incomplete and does not validate syntax.
 - Files larger than 8 MiB are truncated in the preview.
 - UTF-8, UTF-8 BOM, UTF-16 LE BOM, UTF-16 BE BOM, and a Windows-1252 fallback are supported; there is no general encoding detector.
-- No line numbers, folding, user-selectable themes, editing, nested fenced-language highlighting, or extensionless-file registration.
+- No line numbers, folding, editing, nested fenced-language highlighting, or extensionless-file registration.
 
 ## Uninstall
 

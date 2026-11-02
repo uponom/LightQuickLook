@@ -90,6 +90,58 @@ final class HighlighterTests: XCTestCase {
         XCTAssertTrue(tokenTexts(source, result, kind: .directive).contains("|"))
     }
 
+    func testTOMLHighlightsTablesKeysValuesCommentsAndMultilineStrings() {
+        let source = """
+        title = "TOML Example" # comment
+        [ database.settings ]
+        enabled = true
+        ports = [8000, 8001]
+        birthday = 1979-05-27T07:32:00Z
+        """
+        let result = TOMLHighlighter().highlight(source, state: .normal)
+        assertValidRanges(source, result)
+        XCTAssertTrue(tokenTexts(source, result, kind: .property).contains("title"))
+        XCTAssertTrue(tokenTexts(source, result, kind: .property).contains("enabled"))
+        XCTAssertTrue(tokenTexts(source, result, kind: .heading).contains("database.settings"))
+        XCTAssertEqual(tokenTexts(source, result, kind: .punctuation).filter { $0 == "]" }.count, 2)
+        XCTAssertTrue(tokenTexts(source, result, kind: .literal).contains("true"))
+        XCTAssertTrue(tokenTexts(source, result, kind: .number).contains("8000"))
+        XCTAssertTrue(tokenTexts(source, result, kind: .number).contains("1979-05-27T07:32:00Z"))
+        XCTAssertEqual(tokenTexts(source, result, kind: .comment), ["# comment"])
+
+        let firstSource = "message = \"\"\"first\nsecond 😀\n"
+        let first = TOMLHighlighter().highlight(firstSource, state: .normal)
+        XCTAssertEqual(first.state, .tomlMultilineString(quote: 34))
+        let secondSource = "third\n\"\"\"\nenabled = false\n"
+        let second = TOMLHighlighter().highlight(secondSource, state: first.state)
+        assertValidRanges(secondSource, second)
+        XCTAssertEqual(second.state, .normal)
+        XCTAssertTrue(tokenTexts(secondSource, second, kind: .property).contains("enabled"))
+        XCTAssertTrue(tokenTexts(secondSource, second, kind: .literal).contains("false"))
+    }
+
+    func testINIHighlightsSectionsKeysTypedValuesAndComments() {
+        let source = """
+        # global comment
+        [database]
+        host = localhost
+        port: 5432
+        enabled = yes
+        path = C:\\Program Files\\App ; trailing comment
+        """
+        let result = INIHighlighter().highlight(source, state: .normal)
+        assertValidRanges(source, result)
+        XCTAssertEqual(tokenTexts(source, result, kind: .heading), ["database"])
+        XCTAssertEqual(tokenTexts(source, result, kind: .property), ["host", "port", "enabled", "path"])
+        XCTAssertTrue(tokenTexts(source, result, kind: .string).contains("localhost"))
+        XCTAssertTrue(tokenTexts(source, result, kind: .number).contains("5432"))
+        XCTAssertTrue(tokenTexts(source, result, kind: .literal).contains("yes"))
+        XCTAssertEqual(tokenTexts(source, result, kind: .comment), [
+            "# global comment", "; trailing comment",
+        ])
+        XCTAssertEqual(result.state, .normal)
+    }
+
     func testPowerShellHighlightsPriorityConstructsAndCarriesState() {
         let source = "if ($env:PATH -match 'bin') { # Русский 😀\n  Write-Output \"ok\"\n}\n<# open"
         let result = PowerShellHighlighter().highlight(source, state: .normal)

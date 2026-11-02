@@ -17,6 +17,8 @@ Results reflect this machine's current Launch Services database and installed ap
 | `.yaml`, `.yml` | `public.yaml` | stable Apple-declared type |
 | `.json` | `public.json` | stable Apple-declared type |
 | `.jsonl` | `dyn.ah62d4rv4ge80y65tr30a` | dynamic and unsuitable for registration |
+| `.toml` | `public.toml` | stable system-declared type |
+| `.ini` | `com.microsoft.ini` | stable system-declared type |
 | `.md`, `.markdown` | `net.daringfireball.markdown` | established imported type; conforms to `public.plain-text` here |
 | `.sh` | `public.shell-script` | stable Apple type, but broad within the script hierarchy |
 | `.bash` | `public.bash-script` | stable Apple type, conforms to `public.shell-script` |
@@ -39,11 +41,15 @@ The host exports the application-owned narrow types:
 - `io.github.uponom.lightquicklook.hcl-source` → `.tf`, `.tfvars`, `.hcl`, conforms to `public.source-code`;
 - `io.github.uponom.lightquicklook.json-lines` → `.jsonl`, conforms to `public.json` and reuses the JSON lexer.
 
+TOML and INI need no application-owned declaration: Uniform Type Identifiers resolves them to the stable declared types `public.toml` and `com.microsoft.ini` on macOS 26.
+
 The preview extension registers exactly:
 
 ```text
 public.yaml
 public.json
+public.toml
+com.microsoft.ini
 public.shell-script
 public.bash-script
 io.github.uponom.lightquicklook.powershell-source
@@ -73,6 +79,8 @@ The final Release bundle was registered from `build/Release`. PlugInKit reported
 - `.yaml` → `public.yaml`;
 - `.json` → `public.json`;
 - `.jsonl` → `io.github.uponom.lightquicklook.json-lines`;
+- `.toml` → `public.toml`;
+- `.ini` → `com.microsoft.ini`;
 - `.sh` → `public.shell-script`;
 - `.ps1` → `io.github.uponom.lightquicklook.powershell-source`;
 - `.tf` → `io.github.uponom.lightquicklook.hcl-source`.

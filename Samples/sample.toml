@@ -1,0 +1,7 @@
+title = "LightQuickLook TOML sample"
+enabled = true
+
+[preview.theme]
+mode = "automatic"
+font_size = 14
+colors = ["dark", "light"]

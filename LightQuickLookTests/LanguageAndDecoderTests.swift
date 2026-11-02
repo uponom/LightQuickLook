@@ -594,6 +594,9 @@ final class LanguageAndDecoderTests: XCTestCase {
         XCTAssertEqual(jsonLinesType["UTTypeConformsTo"] as? [String], ["public.json"])
         let jsonLinesTags = try XCTUnwrap(jsonLinesType["UTTypeTagSpecification"] as? [String: Any])
         XCTAssertEqual(jsonLinesTags["public.filename-extension"] as? [String], ["jsonl"])
+        let exportedIdentifiers = Set(exportedTypes.compactMap { $0["UTTypeIdentifier"] as? String })
+        XCTAssertFalse(exportedIdentifiers.contains("public.toml"))
+        XCTAssertFalse(exportedIdentifiers.contains("com.microsoft.ini"))
 
         let preview = try propertyList(at: "LightQuickLookPreview/Info.plist")
         let extensionDictionary = try XCTUnwrap(preview["NSExtension"] as? [String: Any])
@@ -603,6 +606,8 @@ final class LanguageAndDecoderTests: XCTestCase {
         XCTAssertEqual(Set(supportedTypes), [
             "public.yaml",
             "public.json",
+            "public.toml",
+            "com.microsoft.ini",
             "public.shell-script",
             "public.bash-script",
             "io.github.uponom.lightquicklook.powershell-source",
@@ -614,6 +619,8 @@ final class LanguageAndDecoderTests: XCTestCase {
     func testLanguageDetectionUsesExtensionsBeforeGuessing() {
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.yml")), .yaml)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.jsonl")), .json)
+        XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.toml")), .toml)
+        XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.ini")), .ini)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.psd1")), .powerShell)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.tfvars")), .terraform)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/tool"), prefix: "#!/usr/bin/env bash\n"), .bash)

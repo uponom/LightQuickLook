@@ -1,7 +1,7 @@
 import Foundation
 
 public enum SourceLanguage: String, CaseIterable, Sendable {
-    case plain, json, yaml, powerShell, bash, terraform, markdown
+    case plain, json, yaml, toml, ini, powerShell, bash, terraform, markdown
 }
 
 public enum LanguageDetector {
@@ -9,6 +9,8 @@ public enum LanguageDetector {
         switch url.pathExtension.lowercased() {
         case "json", "jsonl": return .json
         case "yaml", "yml": return .yaml
+        case "toml": return .toml
+        case "ini": return .ini
         case "ps1", "psm1", "psd1": return .powerShell
         case "sh", "bash": return .bash
         case "tf", "tfvars", "hcl": return .terraform
@@ -43,6 +45,7 @@ public enum LexerState: Equatable, Sendable {
     case heredoc(delimiter: String, stripTabs: Bool, language: SourceLanguage)
     case markdownFence(marker: UInt16, count: Int)
     case yamlBlockScalar(indent: Int)
+    case tomlMultilineString(quote: UInt16)
 }
 
 public struct HighlightResult: Sendable {
@@ -98,6 +101,8 @@ public enum HighlighterFactory {
         switch language {
         case .json: JSONHighlighter()
         case .yaml: YAMLHighlighter()
+        case .toml: TOMLHighlighter()
+        case .ini: INIHighlighter()
         case .powerShell: PowerShellHighlighter()
         case .bash: BashHighlighter()
         case .terraform: TerraformHighlighter()

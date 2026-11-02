@@ -2,7 +2,7 @@
 
 LightQuickLook consists of three production targets:
 
-1. `LightQuickLook`, a tiny SwiftUI host that explains extension activation and exports narrow application-owned PowerShell, HCL, and JSON Lines UTIs.
+1. `LightQuickLook`, a tiny SwiftUI host that explains extension activation and exports narrow application-owned PowerShell, HCL, and JSON Lines UTIs. TOML and INI use system-declared UTIs.
 2. `LightQuickLookPreview`, a view-based Quick Look Preview Extension implementing `QLPreviewingController`.
 3. `LightQuickLookCore`, a statically linked pure-Foundation library containing decoding, language detection, chunking, and lexical highlighting.
 
@@ -29,7 +29,7 @@ The first highlighted chunk completes preparation and becomes visible before Qui
 
 ## Syntax model and extension points
 
-`SyntaxHighlighter` accepts source plus a small `LexerState` and returns UTF-16 `NSRange` token spans. Implementations exist for JSON/JSON Lines, YAML, PowerShell, Bash, Terraform/HCL, and source-oriented Markdown. JSON Lines uses the JSON scanner line by line without introducing a separate language mode. They are scanners, not parsers, and do not validate or evaluate input.
+`SyntaxHighlighter` accepts source plus a small `LexerState` and returns UTF-16 `NSRange` token spans. Implementations exist for JSON/JSON Lines, YAML, TOML, INI, PowerShell, Bash, Terraform/HCL, and source-oriented Markdown. JSON Lines uses the JSON scanner line by line without introducing a separate language mode. The TOML scanner preserves multiline-string state across processing batches; the INI scanner recognizes sections, assignments, typed scalar values, and comments. They are scanners, not parsers, and do not validate or evaluate input.
 
 Adding a future language requires a new `SourceLanguage` case, extension mapping, lexer, factory branch, tests, and justified UTI declaration. UI and loading code remain unchanged. This is the intended path for adding formats such as additional shell dialects without introducing a grammar runtime.
 
