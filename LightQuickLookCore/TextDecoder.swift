@@ -51,6 +51,10 @@ public enum TextDecoder {
 public enum PreviewPolicy {
     public static let initialHighlightUTF16Length = 32 * 1_024
     public static let highlightChunkUTF16Length = 128 * 1_024
+    // Keep adversarial token-dense input from retaining an unbounded number of
+    // ranges in the Quick Look process. Text beyond this budget remains visible
+    // with the base theme instead of being syntax highlighted.
+    public static let maximumHighlightSpans = 250_000
     public static let processingChunkBytes = 256 * 1_024
     public static let maximumPreviewBytes = 8 * 1_024 * 1_024
     public static let longLineWrapUTF16Length = 16 * 1_024

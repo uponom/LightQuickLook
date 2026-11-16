@@ -251,6 +251,51 @@ final class LanguageAndDecoderTests: XCTestCase {
     }
 
     @MainActor
+    func testHighlightSpanBudgetCapsRetainedTokensAndResetsWithNewContent() {
+        let view = CodePreviewView(
+            frame: NSRect(x: 0, y: 0, width: 800, height: 500),
+            userDefaults: .standard,
+            maximumHighlightSpans: 5
+        )
+        view.displayPlainText("abcdefghij", requiresSoftWrap: false)
+
+        let firstHasCapacity = view.appendHighlightBatch(HighlightedRangeBatch(
+            range: NSRange(location: 0, length: 3),
+            spans: [
+                TokenSpan(0, 1, .string),
+                TokenSpan(1, 1, .string),
+                TokenSpan(2, 1, .string),
+            ]
+        ))
+        XCTAssertTrue(firstHasCapacity)
+        XCTAssertEqual(view.highlightedTokenCount, 3)
+        XCTAssertFalse(view.isHighlightingLimited)
+
+        let secondHasCapacity = view.appendHighlightBatch(HighlightedRangeBatch(
+            range: NSRange(location: 3, length: 4),
+            spans: [
+                TokenSpan(3, 1, .number),
+                TokenSpan(4, 1, .number),
+                TokenSpan(5, 1, .number),
+                TokenSpan(6, 1, .number),
+            ]
+        ))
+        XCTAssertFalse(secondHasCapacity)
+        XCTAssertEqual(view.highlightedTokenCount, 5)
+        XCTAssertTrue(view.isHighlightingLimited)
+
+        XCTAssertFalse(view.appendHighlightBatch(HighlightedRangeBatch(
+            range: NSRange(location: 7, length: 1),
+            spans: [TokenSpan(7, 1, .keyword)]
+        )))
+        XCTAssertEqual(view.highlightedTokenCount, 5)
+
+        view.displayPlainText("new", requiresSoftWrap: false)
+        XCTAssertEqual(view.highlightedTokenCount, 0)
+        XCTAssertFalse(view.isHighlightingLimited)
+    }
+
+    @MainActor
     func testLargeSingleLineJSONRecolorsAlreadyLaidOutFirstViewport() async throws {
         let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 1_000, height: 600))
         view.setThemePreference(.dark, persist: false)

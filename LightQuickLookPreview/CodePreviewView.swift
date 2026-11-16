@@ -33,6 +33,11 @@ enum PreviewThemePreference: String, CaseIterable, Sendable {
 
 @MainActor
 private final class TokenSpanIndex {
+    struct AppendResult {
+        let appendedCount: Int
+        let hasRemainingCapacity: Bool
+    }
+
     private struct Batch {
         let range: NSRange
         let spans: [TokenSpan]
@@ -47,8 +52,19 @@ private final class TokenSpanIndex {
         count = 0
     }
 
-    func append(_ batch: HighlightedRangeBatch) {
-        let spans = batch.spans
+    func append(_ batch: HighlightedRangeBatch, maximumCount: Int) -> AppendResult {
+        let remainingCapacity = max(0, maximumCount - count)
+        let appendedCount = min(remainingCapacity, batch.spans.count)
+        guard appendedCount > 0 else {
+            return AppendResult(
+                appendedCount: 0,
+                hasRemainingCapacity: count < maximumCount
+            )
+        }
+
+        let spans = appendedCount == batch.spans.count
+            ? batch.spans
+            : Array(batch.spans.prefix(appendedCount))
         var maximumEnd = 0
         var hasNestedOrOverlappingEnds = false
         let prefixMaximumEnds = spans.map { span -> Int in
@@ -62,6 +78,10 @@ private final class TokenSpanIndex {
             prefixMaximumEnds: hasNestedOrOverlappingEnds ? prefixMaximumEnds : nil
         ))
         count += spans.count
+        return AppendResult(
+            appendedCount: appendedCount,
+            hasRemainingCapacity: count < maximumCount
+        )
     }
 
     func forEachSpan(intersecting query: NSRange, _ body: (TokenSpan) -> Void) {
@@ -137,6 +157,7 @@ final class CodePreviewView: NSView {
     private let lightThemeButton = NSButton(title: "Light", target: nil, action: nil)
     private let darkThemeButton = NSButton(title: "Dark", target: nil, action: nil)
     private let tokenIndex = TokenSpanIndex()
+    private let maximumHighlightSpans: Int
     private(set) var fontSize = CodePreviewView.defaultFontSize
     private(set) var themePreference: PreviewThemePreference
     private var preciseScrollAccumulator: CGFloat = 0
@@ -146,6 +167,7 @@ final class CodePreviewView: NSView {
     private var baseRenderingAttributes: [NSAttributedString.Key: Any] = [:]
     private var tokenRenderingAttributes: [TokenKind: [NSAttributedString.Key: Any]] = [:]
     private(set) var isSoftWrappingEnabled = false
+    private(set) var isHighlightingLimited = false
     private var firstViewportValidationPending = false
     private var viewportRenderingRefreshScheduled = false
     private(set) var viewportRenderingRefreshCount = 0
@@ -171,13 +193,19 @@ final class CodePreviewView: NSView {
     override init(frame frameRect: NSRect) {
         let defaults = UserDefaults.standard
         userDefaults = defaults
+        maximumHighlightSpans = PreviewPolicy.maximumHighlightSpans
         themePreference = Self.loadThemePreference(from: defaults)
         super.init(frame: frameRect)
         configure()
     }
 
-    init(frame frameRect: NSRect, userDefaults: UserDefaults) {
+    init(
+        frame frameRect: NSRect,
+        userDefaults: UserDefaults,
+        maximumHighlightSpans: Int = PreviewPolicy.maximumHighlightSpans
+    ) {
         self.userDefaults = userDefaults
+        self.maximumHighlightSpans = max(0, maximumHighlightSpans)
         themePreference = Self.loadThemePreference(from: userDefaults)
         super.init(frame: frameRect)
         configure()
@@ -186,6 +214,7 @@ final class CodePreviewView: NSView {
     required init?(coder: NSCoder) {
         let defaults = UserDefaults.standard
         userDefaults = defaults
+        maximumHighlightSpans = PreviewPolicy.maximumHighlightSpans
         themePreference = Self.loadThemePreference(from: defaults)
         super.init(coder: coder)
         configure()
@@ -451,6 +480,7 @@ final class CodePreviewView: NSView {
 
     func displayPlainText(_ text: String, requiresSoftWrap: Bool) {
         tokenIndex.reset()
+        isHighlightingLimited = false
         configureSoftWrapping(requiresSoftWrap)
         textView.textStorage?.setAttributedString(NSAttributedString(
             string: text,
@@ -460,17 +490,22 @@ final class CodePreviewView: NSView {
         invalidateAllRenderingAttributes()
     }
 
-    func appendHighlightBatch(_ batch: HighlightedRangeBatch) {
-        guard let storage = textView.textStorage else { return }
+    @discardableResult
+    func appendHighlightBatch(_ batch: HighlightedRangeBatch) -> Bool {
+        guard let storage = textView.textStorage else { return false }
         let documentRange = NSRange(location: 0, length: storage.length)
-        guard NSIntersectionRange(documentRange, batch.range) == batch.range else { return }
-        tokenIndex.append(batch)
-        applyHeadingFonts(in: batch.range)
-        // TextKit 2 can cache the base attributes in fragments created before an
-        // asynchronous highlight batch arrives. Invalidate that cache, then
-        // reinstall the attributes synchronously so visible fragments recolor now
-        // while the validator remains the lazy fallback for later fragments.
-        applyRenderingAttributes(in: batch.range)
+        guard NSIntersectionRange(documentRange, batch.range) == batch.range else { return false }
+        let result = tokenIndex.append(batch, maximumCount: maximumHighlightSpans)
+        if result.appendedCount > 0 {
+            applyHeadingFonts(in: batch.range)
+            // TextKit 2 can cache the base attributes in fragments created before an
+            // asynchronous highlight batch arrives. Invalidate that cache, then
+            // reinstall the attributes synchronously so visible fragments recolor now
+            // while the validator remains the lazy fallback for later fragments.
+            applyRenderingAttributes(in: batch.range)
+        }
+        if !result.hasRemainingCapacity { isHighlightingLimited = true }
+        return result.hasRemainingCapacity
     }
 
     var highlightedTokenCount: Int { tokenIndex.count }

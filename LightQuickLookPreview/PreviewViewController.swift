@@ -2,6 +2,10 @@ import AppKit
 import QuickLookUI
 import LightQuickLookCore
 
+private enum BackgroundHighlightingControl: Error {
+    case spanLimitReached
+}
+
 @MainActor
 @objc(PreviewViewController)
 final class PreviewViewController: NSViewController, @preconcurrency QLPreviewingController {
@@ -67,11 +71,15 @@ final class PreviewViewController: NSViewController, @preconcurrency QLPreviewin
                     displayText,
                     requiresSoftWrap: document.requiresSoftWrap
                 )
+                var shouldContinueHighlighting = true
                 if let initialHighlight {
-                    self.codeView.appendHighlightBatch(initialHighlight.batch)
+                    shouldContinueHighlighting = self.codeView.appendHighlightBatch(initialHighlight.batch)
                     PreviewPerformance.event("InitialHighlightInstalled")
                 }
-                if let truncationBatch { self.codeView.appendHighlightBatch(truncationBatch) }
+                if let truncationBatch {
+                    let hasCapacity = self.codeView.appendHighlightBatch(truncationBatch)
+                    shouldContinueHighlighting = shouldContinueHighlighting && hasCapacity
+                }
                 PreviewPerformance.signposter.endInterval("InstallPlainText", installingText)
                 PreviewPerformance.event("PlainTextInstalled")
 
@@ -86,6 +94,10 @@ final class PreviewViewController: NSViewController, @preconcurrency QLPreviewin
                 let continuationLocation = initialHighlight.map { NSMaxRange($0.batch.range) } ?? 0
                 let continuationState = initialHighlight?.stateAfter ?? .normal
                 guard continuationLocation < sourceUTF16Length else { return }
+                guard shouldContinueHighlighting else {
+                    PreviewPerformance.event("HighlightSpanLimitReached")
+                    return
+                }
 
                 let highlighting = PreviewPerformance.signposter.beginInterval("BackgroundHighlighting")
                 let worker = Task.detached(priority: .userInitiated) { [self] in
@@ -98,7 +110,9 @@ final class PreviewViewController: NSViewController, @preconcurrency QLPreviewin
                         cancellation: .currentTask
                     ) { batch in
                         try Task.checkCancellation()
-                        await self.appendHighlightBatch(batch)
+                        guard await self.appendHighlightBatch(batch) else {
+                            throw BackgroundHighlightingControl.spanLimitReached
+                        }
                     }
                 }
                 do {
@@ -107,6 +121,11 @@ final class PreviewViewController: NSViewController, @preconcurrency QLPreviewin
                     } onCancel: {
                         worker.cancel()
                     }
+                } catch BackgroundHighlightingControl.spanLimitReached {
+                    worker.cancel()
+                    PreviewPerformance.signposter.endInterval("BackgroundHighlighting", highlighting)
+                    PreviewPerformance.event("HighlightSpanLimitReached")
+                    return
                 } catch {
                     worker.cancel()
                     PreviewPerformance.signposter.endInterval("BackgroundHighlighting", highlighting)
@@ -132,7 +151,7 @@ final class PreviewViewController: NSViewController, @preconcurrency QLPreviewin
         }
     }
 
-    private func appendHighlightBatch(_ batch: HighlightedRangeBatch) {
+    private func appendHighlightBatch(_ batch: HighlightedRangeBatch) -> Bool {
         codeView.appendHighlightBatch(batch)
     }
 
