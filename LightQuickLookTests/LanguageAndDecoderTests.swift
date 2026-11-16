@@ -572,15 +572,25 @@ final class LanguageAndDecoderTests: XCTestCase {
         let view = CodePreviewView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         let window = NSWindow(
             contentRect: view.frame,
-            styleMask: [.borderless],
+            styleMask: [.titled],
             backing: .buffered,
             defer: false
         )
 
         XCTAssertFalse(view.isKeyboardMonitorInstalled)
         window.contentView = view
-        defer { window.contentView = NSView() }
+        defer {
+            window.orderOut(nil)
+            window.contentView = NSView()
+        }
         XCTAssertTrue(view.isKeyboardMonitorInstalled)
+        XCTAssertFalse(view.isSystemHotKeyMonitorRunning)
+
+        let unrelatedWindow = NSWindow()
+        NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: unrelatedWindow)
+        XCTAssertFalse(view.isSystemHotKeyMonitorRunning)
+
+        NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
         XCTAssertTrue(view.isSystemHotKeyMonitorRunning)
 
         let commandPlus = try XCTUnwrap(NSEvent.keyEvent(
@@ -612,6 +622,9 @@ final class LanguageAndDecoderTests: XCTestCase {
         ))
         XCTAssertNotNil(view.filterMonitoredKeyDown(unrelatedCommand))
         XCTAssertEqual(view.fontSize, CodePreviewView.defaultFontSize + 1)
+
+        NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: window)
+        XCTAssertFalse(view.isSystemHotKeyMonitorRunning)
 
         window.contentView = NSView()
         XCTAssertFalse(view.isKeyboardMonitorInstalled)

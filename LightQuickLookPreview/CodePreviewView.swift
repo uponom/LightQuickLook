@@ -172,13 +172,16 @@ final class CodePreviewView: NSView {
     private var viewportRenderingRefreshScheduled = false
     private(set) var viewportRenderingRefreshCount = 0
     private var isApplyingTheme = false
+    private var acceptsSystemHotKeys = false
     private let keyDownMonitor = EventMonitorToken()
+    private var windowActivationObservers: [NSObjectProtocol] = []
     private lazy var systemHotKeyMonitor = FontSizeHotKeyMonitor { [weak self] action in
+        guard let self, self.acceptsSystemHotKeys else { return }
         switch action {
         case .decrease:
-            self?.adjustFontSize(by: -1)
+            self.adjustFontSize(by: -1)
         case .increase:
-            self?.adjustFontSize(by: 1)
+            self.adjustFontSize(by: 1)
         }
     }
 
@@ -406,13 +409,49 @@ final class CodePreviewView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window == nil {
+        removeWindowActivationObservers()
+        guard let window else {
             removeKeyboardMonitor()
-            systemHotKeyMonitor.stop()
-        } else {
-            installKeyboardMonitor()
-            systemHotKeyMonitor.start()
+            setSystemHotKeysEnabled(false)
+            return
         }
+
+        installKeyboardMonitor()
+        observeActivation(of: window)
+        setSystemHotKeysEnabled(window.isKeyWindow)
+    }
+
+    private func observeActivation(of window: NSWindow) {
+        let center = NotificationCenter.default
+        let transitions: [(name: Notification.Name, isEnabled: Bool)] = [
+            (NSWindow.didBecomeKeyNotification, true),
+            (NSWindow.didResignKeyNotification, false),
+            (NSWindow.willCloseNotification, false),
+        ]
+        windowActivationObservers = transitions.map { transition in
+            center.addObserver(forName: transition.name, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.setSystemHotKeysEnabled(transition.isEnabled)
+                }
+            }
+        }
+    }
+
+    private func removeWindowActivationObservers() {
+        let center = NotificationCenter.default
+        for observer in windowActivationObservers {
+            center.removeObserver(observer)
+        }
+        windowActivationObservers.removeAll()
+    }
+
+    private func setSystemHotKeysEnabled(_ isEnabled: Bool) {
+        acceptsSystemHotKeys = isEnabled
+        guard isEnabled else {
+            systemHotKeyMonitor.stop()
+            return
+        }
+        systemHotKeyMonitor.start()
     }
 
     private func installKeyboardMonitor() {
