@@ -1,4 +1,45 @@
-# Security audit — 2026-08-11
+# Security audits
+
+## Follow-up hardening — 2026-11-18
+
+This follow-up reviewed release signing, large-input resource use, keyboard-shortcut lifetime, and repeatability of the release security checks. It supplements rather than rewrites the original 2026-08-11 audit below.
+
+### Findings and remediation
+
+#### S-08 — Release builds inherited `get-task-allow` (medium, fixed)
+
+Ad-hoc Release builds could receive Xcode's base signing entitlement `com.apple.security.get-task-allow`, despite the source entitlement files containing only App Sandbox. Release settings now disable base-entitlement injection for both production targets. The release gate extracts the entitlements from the actual built `.app` and `.appex` and fails unless each contains exactly `com.apple.security.app-sandbox = true` and no other key.
+
+#### S-09 — unbounded retained syntax-token metadata (medium, fixed)
+
+The 8 MiB read cap bounded source bytes but not the number of token spans retained by the UI. Inputs containing very many short tokens could amplify memory use. Each preview now retains at most 250,000 token spans, the background highlighter stops when the budget is exhausted, and the full decoded text remains available in the base color. Tests cover the cap, early termination, and reset for replacement content.
+
+#### S-10 — process-global hotkeys outlived active preview focus (low, fixed)
+
+Command-minus and Command-plus used Carbon registrations that were active for the entire lifetime of an attached preview view. The registrations now start only when the preview window becomes key and stop when it resigns key status, closes, or the view leaves its window. The action path also verifies the active key window before changing font size. Lifecycle and routing regression tests cover these boundaries.
+
+#### S-11 — release security invariants were not continuously enforced (low, fixed)
+
+The release script previously verified the overall code signature but did not reject unexpected entitlements or a missing Hardened Runtime flag, and CI did not rerun the complete release path. The canonical script now runs tests, warnings-as-errors compilation, Release static analysis, strict host/extension signature checks, exact entitlement checks, Hardened Runtime checks, architecture/version checks, DMG verification, and checksum generation. `.github/workflows/security.yml` runs that script on pull requests and pushes to `main` on an Apple-silicon macOS 26 runner.
+
+### Verification results
+
+- Local full release-validation script: pass.
+- XCTest on arm64: **43 passed, 0 failed, 0 skipped**.
+- Xcode static analyzer, Release: pass.
+- Swift compiler warnings treated as errors in test, analysis, and release build: pass.
+- Strict host and extension signature verification: pass.
+- Final CodeDirectory flags: `adhoc,runtime` for host and extension.
+- Final entitlements: App Sandbox only for host and extension; `get-task-allow` absent.
+- Final architecture: arm64 for host and extension.
+- DMG verification and SHA-256 generation: pass.
+- GitHub Actions workflow definition: added; its remote result will be available after the changes are pushed.
+
+No unresolved finding introduced by this follow-up remains. The intentional absence of Developer ID signing and notarization is still a distribution limitation, described below.
+
+## Original audit — 2026-08-11
+
+The following section is the historical audit snapshot from 2026-08-11. Counts, architectures, and artifact details in it describe the build tested on that date, not the current release-validation result above.
 
 ## Scope and threat model
 
@@ -59,7 +100,7 @@ The application-owned PowerShell and HCL identifiers were initially listed under
 
 The shared identifier predicate includes `:` for PowerShell variables, which caused the YAML scanner to consume `name:` as one word. YAML now stops a plain key at the colon without weakening PowerShell handling. The previously failing YAML test passes.
 
-No unresolved code security issue of low, medium, high, or critical severity was found after remediation.
+At the time of this original audit, no unresolved code security issue of low, medium, high, or critical severity was found after remediation.
 
 ## Verification results
 
@@ -84,6 +125,6 @@ No unresolved code security issue of low, medium, high, or critical severity was
 
 ## Distribution limitation
 
-The machine has no valid Apple Development or Developer ID Application signing identity. The final local artifact is therefore ad-hoc signed with Hardened Runtime and is intentionally rejected by Gatekeeper for distribution. Public distribution still requires signing with a Developer ID certificate and Apple notarization; this is an operational release step, not an unresolved vulnerability in the source.
+The machine has no valid Apple Development or Developer ID Application signing identity. The final local artifact is therefore ad-hoc signed with Hardened Runtime and is intentionally rejected by Gatekeeper by default. Distribution that opens without a manual Gatekeeper override requires signing with a Developer ID certificate and Apple notarization; this is an operational release step, not an unresolved vulnerability in the source.
 
 The `public.shell-script` registration needed for `.sh` is intentionally broader than Bash and can make the extension a candidate for other script subtypes. Unsupported extensions remain plain text and are never executed.
