@@ -32,5 +32,11 @@
             <key>UTTypeConformsTo</key><array><string>public.json</string></array>
             <key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>jsonl</string></array></dict>
         </dict>
+        <dict>
+            <key>UTTypeIdentifier</key><string>io.github.uponom.lightquicklook.terraform-state</string>
+            <key>UTTypeDescription</key><string>Terraform state</string>
+            <key>UTTypeConformsTo</key><array><string>public.json</string></array>
+            <key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>tfstate</string></array></dict>
+        </dict>
     </array>
 </dict></plist>

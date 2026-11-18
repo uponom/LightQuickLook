@@ -7,7 +7,7 @@ public enum SourceLanguage: String, CaseIterable, Sendable {
 public enum LanguageDetector {
     public static func detect(url: URL, prefix: String = "") -> SourceLanguage {
         switch url.pathExtension.lowercased() {
-        case "json", "jsonl": return .json
+        case "json", "jsonl", "tfstate": return .json
         case "yaml", "yml": return .yaml
         case "toml": return .toml
         case "ini": return .ini

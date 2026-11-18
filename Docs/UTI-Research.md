@@ -39,7 +39,8 @@ The host exports the application-owned narrow types:
 
 - `io.github.uponom.lightquicklook.powershell-source` → `.ps1`, `.psm1`, `.psd1`, conforms to `public.source-code`;
 - `io.github.uponom.lightquicklook.hcl-source` → `.tf`, `.tfvars`, `.hcl`, conforms to `public.source-code`;
-- `io.github.uponom.lightquicklook.json-lines` → `.jsonl`, conforms to `public.json` and reuses the JSON lexer.
+- `io.github.uponom.lightquicklook.json-lines` → `.jsonl`, conforms to `public.json` and reuses the JSON lexer;
+- `io.github.uponom.lightquicklook.terraform-state` → `.tfstate`, conforms to `public.json` and reuses the JSON lexer.
 
 TOML and INI need no application-owned declaration: Uniform Type Identifiers resolves them to the stable declared types `public.toml` and `com.microsoft.ini` on macOS 26.
 
@@ -55,6 +56,7 @@ public.bash-script
 io.github.uponom.lightquicklook.powershell-source
 io.github.uponom.lightquicklook.hcl-source
 io.github.uponom.lightquicklook.json-lines
+io.github.uponom.lightquicklook.terraform-state
 ```
 
 It does not register `public.data`, `public.item`, `public.content`, `public.text`, `public.plain-text`, or `public.source-code`.
@@ -79,6 +81,7 @@ The final Release bundle was registered from `build/Release`. PlugInKit reported
 - `.yaml` → `public.yaml`;
 - `.json` → `public.json`;
 - `.jsonl` → `io.github.uponom.lightquicklook.json-lines`;
+- `.tfstate` → `io.github.uponom.lightquicklook.terraform-state`;
 - `.toml` → `public.toml`;
 - `.ini` → `com.microsoft.ini`;
 - `.sh` → `public.shell-script`;

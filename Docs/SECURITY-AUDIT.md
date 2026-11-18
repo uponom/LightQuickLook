@@ -25,7 +25,7 @@ The release script previously verified the overall code signature but did not re
 ### Verification results
 
 - Local full release-validation script: pass.
-- XCTest on arm64: **43 passed, 0 failed, 0 skipped**.
+- XCTest on arm64: **44 passed, 0 failed, 0 skipped**.
 - Xcode static analyzer, Release: pass.
 - Swift compiler warnings treated as errors in test, analysis, and release build: pass.
 - Strict host and extension signature verification: pass.

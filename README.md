@@ -7,7 +7,7 @@ Select a supported file in Finder and press Space to see selectable, copyable, s
 ## Supported formats
 
 - YAML: `.yaml`, `.yml`
-- JSON and JSON Lines: `.json`, `.jsonl`
+- JSON, JSON Lines, and Terraform state: `.json`, `.jsonl`, `.tfstate`
 - TOML: `.toml`
 - INI: `.ini`
 - PowerShell: `.ps1`, `.psm1`, `.psd1`
@@ -118,7 +118,7 @@ Scripts/diagnose-quicklook.sh /Applications/LightQuickLook.app
 - If previews do not appear, confirm the extension is enabled, move/relaunch the app, and inspect `pluginkit -mAvvv -p com.apple.quicklook.preview`.
 - macOS tracks extension-bearing app bundles by both identity and path. Building the same app into many `DerivedData` or temporary product directories can therefore create duplicate entries in System Settings. Keep one installed/registered copy, remove obsolete build products, and reopen System Settings after cleanup.
 - Finder handler precedence can change when other preview applications are installed. Restart Finder or log out/in after changing competing extensions.
-- PowerShell, HCL, and JSON Lines use application-owned exported UTIs declared by the host because macOS otherwise assigns machine-specific `dyn.*` types. TOML and INI use the system-declared `public.toml` and `com.microsoft.ini` types.
+- PowerShell, HCL, JSON Lines, and Terraform state use application-owned exported UTIs declared by the host because macOS otherwise assigns machine-specific `dyn.*` types. TOML and INI use the system-declared `public.toml` and `com.microsoft.ini` types.
 - Supporting `.sh` requires `public.shell-script`. This may also make LightQuickLook a candidate for Ruby, Perl, PHP, and zsh files; those unsupported extensions safely fall back to plain text. Details and evidence are in `Docs/UTI-Research.md`.
 
 ## Current limitations

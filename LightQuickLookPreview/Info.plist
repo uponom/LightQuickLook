@@ -23,6 +23,7 @@
                 <string>io.github.uponom.lightquicklook.powershell-source</string>
                 <string>io.github.uponom.lightquicklook.hcl-source</string>
                 <string>io.github.uponom.lightquicklook.json-lines</string>
+                <string>io.github.uponom.lightquicklook.terraform-state</string>
             </array>
         </dict>
         <key>NSExtensionPointIdentifier</key><string>com.apple.quicklook.preview</string>

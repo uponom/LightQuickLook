@@ -652,6 +652,12 @@ final class LanguageAndDecoderTests: XCTestCase {
         XCTAssertEqual(jsonLinesType["UTTypeConformsTo"] as? [String], ["public.json"])
         let jsonLinesTags = try XCTUnwrap(jsonLinesType["UTTypeTagSpecification"] as? [String: Any])
         XCTAssertEqual(jsonLinesTags["public.filename-extension"] as? [String], ["jsonl"])
+        let terraformStateType = try XCTUnwrap(exportedTypes.first {
+            $0["UTTypeIdentifier"] as? String == "io.github.uponom.lightquicklook.terraform-state"
+        })
+        XCTAssertEqual(terraformStateType["UTTypeConformsTo"] as? [String], ["public.json"])
+        let terraformStateTags = try XCTUnwrap(terraformStateType["UTTypeTagSpecification"] as? [String: Any])
+        XCTAssertEqual(terraformStateTags["public.filename-extension"] as? [String], ["tfstate"])
         let exportedIdentifiers = Set(exportedTypes.compactMap { $0["UTTypeIdentifier"] as? String })
         XCTAssertFalse(exportedIdentifiers.contains("public.toml"))
         XCTAssertFalse(exportedIdentifiers.contains("com.microsoft.ini"))
@@ -671,12 +677,14 @@ final class LanguageAndDecoderTests: XCTestCase {
             "io.github.uponom.lightquicklook.powershell-source",
             "io.github.uponom.lightquicklook.hcl-source",
             "io.github.uponom.lightquicklook.json-lines",
+            "io.github.uponom.lightquicklook.terraform-state",
         ])
     }
 
     func testLanguageDetectionUsesExtensionsBeforeGuessing() {
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.yml")), .yaml)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.jsonl")), .json)
+        XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/terraform.tfstate")), .json)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.toml")), .toml)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.ini")), .ini)
         XCTAssertEqual(LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/a.psd1")), .powerShell)

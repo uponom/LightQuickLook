@@ -71,6 +71,21 @@ final class HighlighterTests: XCTestCase {
         XCTAssertEqual(result.state, .normal)
     }
 
+    func testTerraformStateUsesJSONDetectionAndHighlighting() {
+        let source = "{\"version\":4,\"terraform_version\":\"1.14.0\",\"resources\":[]}"
+        let language = LanguageDetector.detect(url: URL(fileURLWithPath: "/tmp/terraform.tfstate"))
+        let result = HighlighterFactory.make(for: language).highlight(source, state: .normal)
+
+        XCTAssertEqual(language, .json)
+        assertValidRanges(source, result)
+        XCTAssertEqual(tokenTexts(source, result, kind: .property), [
+            "\"version\"", "\"terraform_version\"", "\"resources\"",
+        ])
+        XCTAssertEqual(tokenTexts(source, result, kind: .number), ["4"])
+        XCTAssertEqual(tokenTexts(source, result, kind: .string), ["\"1.14.0\""])
+        XCTAssertEqual(result.state, .normal)
+    }
+
     func testJSONCarriesAStringAcrossProcessingChunks() {
         let first = JSONHighlighter().highlight("{\"value\": \"unterminated", state: .normal)
         XCTAssertEqual(first.state, .doubleQuotedString)
