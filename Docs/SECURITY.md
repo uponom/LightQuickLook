@@ -43,7 +43,7 @@ The Carbon registrations used for Command-minus and Command-plus exist only whil
 - have Hardened Runtime in their CodeDirectory flags;
 - have matching bundle versions and arm64-only executables.
 
-The script also creates the unnotarized DMG, verifies the disk image, and writes its SHA-256 checksum. [The GitHub Actions workflow](../.github/workflows/security.yml) runs this same complete gate on every pull request and every push to `main` using an Apple-silicon macOS 26 runner. Remote CI status is authoritative only after the workflow has run on GitHub.
+The script also creates the unnotarized DMG, verifies the disk image, and writes its SHA-256 checksum. [The validation workflow](../.github/workflows/security.yml) runs this same complete gate on every pull request and every push to `main` using an Apple-silicon macOS 26 runner. The separate [release workflow](../.github/workflows/release.yml) runs only for version tags, requires the tag to match both bundle versions, reruns the gate, verifies the checksum, and publishes the DMG plus checksum to GitHub Releases. Remote CI and release status are authoritative only after the workflows have run on GitHub.
 
 ## Audit commands
 

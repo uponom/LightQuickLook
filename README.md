@@ -28,8 +28,8 @@ Intel Macs (`x86_64`) and older macOS releases are not supported.
 Prebuilt versions are published on the [GitHub Releases](https://github.com/uponom/LightQuickLook/releases) page as:
 
 ```text
-LightQuickLook-1.1.0-unnotarized.dmg
-LightQuickLook-1.1.0-unnotarized-SHA256.txt
+LightQuickLook-1.2.0-unnotarized.dmg
+LightQuickLook-1.2.0-unnotarized-SHA256.txt
 ```
 
 LightQuickLook is free, open-source software and the project does not purchase an Apple Developer Program membership. The prebuilt application therefore has a consistent ad hoc code signature, but it is **not signed with an Apple Developer ID certificate and is not notarized by Apple**. macOS cannot verify the developer or confirm that Apple scanned the downloaded application, so Gatekeeper will warn or block the first launch.
@@ -38,13 +38,13 @@ The source for every release is available under its version tag. The accompanyin
 
 ### Install the prebuilt application
 
-1. Download `LightQuickLook-1.1.0-unnotarized.dmg` and its SHA-256 file from GitHub Releases.
+1. Download `LightQuickLook-1.2.0-unnotarized.dmg` and its SHA-256 file from GitHub Releases.
 2. Optionally verify the download from Terminal:
 
    ```sh
    cd ~/Downloads
-   shasum -a 256 LightQuickLook-1.1.0-unnotarized.dmg
-   cat LightQuickLook-1.1.0-unnotarized-SHA256.txt
+   shasum -a 256 LightQuickLook-1.2.0-unnotarized.dmg
+   cat LightQuickLook-1.2.0-unnotarized-SHA256.txt
    ```
 
    The two hashes must match.
@@ -89,6 +89,8 @@ Scripts/build-release-dmg.sh
 ```
 
 The script runs the complete test suite, builds an optimized `arm64` Release, verifies the host and extension signatures and architectures, and writes the DMG plus SHA-256 file to `dist/`.
+
+Pushing an annotated version tag such as `v1.2.0` runs the dedicated release workflow. The workflow requires the tag to match both bundle versions, reruns the complete release gate, verifies the generated checksum, and publishes the DMG and checksum directly to GitHub Releases.
 
 The pure Swift core can also be compiled and smoke-tested without third-party tools:
 
